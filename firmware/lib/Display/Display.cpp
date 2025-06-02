@@ -29,8 +29,8 @@ void Display::enable()
     DDRB = 0xFF; // Columns output
     DDRD = 0xFF; // Rows output
 
-    // Start Timer1 at 1 kHz to drive multiplexing
-    timer.initialize(1000); // 1000 µs period
+    // Start Timer1 at 60 Hz to drive multiplexing
+    timer.initialize(60); //60 µs period
     timer.attachInterrupt(onTimerTick);
     timer.start();
 
