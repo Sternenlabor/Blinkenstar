@@ -36,3 +36,11 @@ eagle.epf
 *.eps
 
 **/.DS_Store
+
+hardware/Blinkenstar/_autosave-Blinkenstar.kicad_pcb
+
+hardware/Blinkenstar/~_autosave-Blinkenstar.kicad_pcb.lck
+
+hardware/Blinkenstar/~Blinkenstar.kicad_sch.lck
+
+hardware/Blinkenstar/Blinkenstar-backups/
