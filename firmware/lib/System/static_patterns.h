@@ -12,11 +12,11 @@
  */
 
 // shutdownPattern: FRAMES type, 8 columns per frame
-// Speed = 26 (250 - (0x0E << 4)), No delay
+// Speed = 218 (250 - (0x02 << 4)), No delay
 // Column data: bytes for columns 0-7 of each frame follow
 const uint8_t PROGMEM shutdownPattern[] = {
 	0x20, 0x40,
-	0x0E, 0x0F,
+	0x02, 0x0F,
 	0xFF, 0x81, 0x81, 0x81, 0x81, 0x81, 0x81, 0xFF,
 	0x7E, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x7E,
 	0x3C, 0x24, 0x24, 0x24, 0x24, 0x24, 0x24, 0x3C,
@@ -63,15 +63,15 @@ const uint8_t PROGMEM emptyPattern[] = {
 	' ', 'l', 'e', 'e', 'r', ' '};
 #else
 // emptyPattern: TEXT type, length = 38 chars
-// Speed = 42 (250 - 0xD0), No delay
+// Speed, No delay
 // Character data: version and status message
 const uint8_t PROGMEM emptyPattern[] = {
 	0x10, 0x26,
-	0xD0, 0x00,
+	0x96, 0x00,   // 250 - 0x96 (150) = ~100 ms per scroll step
 	' ', 1, 'v', FW_REV_MAJOR + '0', '.', FW_REV_MINOR + '0', ' ', '-',
 	' ', 'B', 'l', 'i', 'n', 'k', 'e', 'n', 's', 't', 'a', 'r',
 	' ', 'S', 't', 'o', 'r', 'a', 'g', 'e', ' ', 'i', 's',
-	' ', 'e', 'm', 'p', 't', 'y'};
+	' ', 'e', 'm', 'p', 't', 'y', ' '};
 #endif
 
 #ifdef LANG_DE

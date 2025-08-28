@@ -3,7 +3,7 @@
 
 // provide dummy FW_REV_MAJOR/MINOR so static_patterns.h compiles
 #ifndef FW_REV_MAJOR
-#define FW_REV_MAJOR 0
+#define FW_REV_MAJOR 1
 #endif
 #ifndef FW_REV_MINOR
 #define FW_REV_MINOR 0
@@ -41,6 +41,14 @@ public:
     void reset();
     void show(animation_t *anim);
 
+    // Diagnostics: simple column control for hardware testing
+    void clearColumns();
+    void setColumn(uint8_t idx, uint8_t value);
+
+    // Activity indicator: briefly overlay a pixel without disrupting animations
+    void setIndicator(uint8_t col, uint8_t row, uint8_t frames);
+    void clearIndicator();
+
 private:
     uint8_t active_col = 0;                                                 // Current column being multiplexed
     uint8_t update_cnt = 0;                                                 // Counter for animation timing
@@ -59,6 +67,12 @@ private:
     };
     AnimationStatus status = RUNNING; // Current animation status
     animation_t *current_anim = nullptr;
+
+    // Indicator overlay state
+    bool indicator_active = false;
+    uint8_t indicator_col = 0;
+    uint8_t indicator_row = 0;
+    uint8_t indicator_frames = 0; // decremented once per full refresh
 };
 
 extern Display display;

@@ -34,7 +34,8 @@ void Display::enable()
     timer.attachInterrupt(onTimerTick);
     timer.start();
 
-    // --- Initialize turn-on animation pattern ---
+    // --- Initialize turn-on animation pattern (skip in diagnostics) ---
+#ifndef DIAG_BUTTONS
     const uint8_t *pattern = emptyPattern; // PROGMEM pointer
     uint8_t hdr0 = pgm_read_byte(pattern);
     uint8_t hdr1 = pgm_read_byte(pattern + 1);
@@ -76,6 +77,7 @@ void Display::enable()
     show(&activeAnimation);
     need_update = 1;
     update();
+#endif
 }
 
 // Multiplex one column; advance animation on threshold
@@ -84,7 +86,13 @@ void Display::multiplex()
     // Disable current column
     PORTB = 0x00;
     // Output row data for the active column
-    PORTD = disp_buf[active_col];
+    uint8_t rows = disp_buf[active_col];
+    // Overlay indicator pixel (active-low)
+    if (indicator_active && active_col == indicator_col)
+    {
+        rows &= (uint8_t)~_BV(indicator_row);
+    }
+    PORTD = rows;
     // Enable the active column (active-low)
     PORTB = (1 << active_col);
 
@@ -92,6 +100,18 @@ void Display::multiplex()
     if (++active_col == 8)
     {
         active_col = 0;
+        // Decrement indicator lifetime once per full refresh
+        if (indicator_active)
+        {
+            if (indicator_frames > 0)
+            {
+                indicator_frames--;
+            }
+            if (indicator_frames == 0)
+            {
+                indicator_active = false;
+            }
+        }
         if (++update_cnt == update_threshold)
         {
             update_cnt = 0;
@@ -121,6 +141,44 @@ void Display::reset()
     char_pos = -1;
     need_update = 0;
     status = RUNNING;
+}
+
+// --- Diagnostics helpers ---
+void Display::clearColumns()
+{
+    for (uint8_t i = 0; i < 8; i++)
+    {
+        // 0xFF = all LEDs off for a column (active-low rows)
+        // Keep private buffer semantics consistent
+        // (Multiplex ISR will read from disp_buf)
+        // Note: no locking; acceptable for simple diagnostics
+        disp_buf[i] = 0xFF;
+    }
+}
+
+void Display::setColumn(uint8_t idx, uint8_t value)
+{
+    if (idx < 8)
+    {
+        disp_buf[idx] = value;
+    }
+}
+
+void Display::setIndicator(uint8_t col, uint8_t row, uint8_t frames)
+{
+    if (col < 8 && row < 8)
+    {
+        indicator_col = col;
+        indicator_row = row;
+        indicator_frames = frames;
+        indicator_active = frames > 0;
+    }
+}
+
+void Display::clearIndicator()
+{
+    indicator_active = false;
+    indicator_frames = 0;
 }
 
 // Start a new animation
