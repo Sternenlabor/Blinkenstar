@@ -6,26 +6,36 @@
 #include <avr/power.h>
 #include <avr/sleep.h>
 #include <avr/wdt.h>
+#include <avr/io.h>
+#ifdef ENABLE_MODEM
+#include "Receiver.h"
+#endif
 
 System rocket;
 
 static uint8_t animationBuffer[128];
 
-// Arduino pin definitions for buttons (PC3 -> A3, PC7 -> A7)
-constexpr uint8_t BUTTON1_PIN = A3;
-constexpr uint8_t BUTTON2_PIN = A7;
+// Buttons are wired to Port C pins: PC3 (pin 26) and PC7 (pin 20)
+// Use direct port access to avoid any Arduino pin mapping ambiguity
+static inline bool button1_is_low() { return (PINC & _BV(PC3)) == 0; }
+static inline bool button2_is_low() { return (PINC & _BV(PC7)) == 0; }
 
 void System::initialize()
 {
     // Disable watchdog via Arduino API
     wdt_disable();
 
-    // Configure button pins with internal pull-ups
-    pinMode(BUTTON1_PIN, INPUT_PULLUP);
-    pinMode(BUTTON2_PIN, INPUT_PULLUP);
+    // Configure button pins with internal pull-ups on Port C (PC3, PC7)
+    DDRC &= ~( _BV(PC3) | _BV(PC7) );   // inputs
+    PORTC |= _BV(PC3) | _BV(PC7);       // enable pull-ups
 
     // Initialize display
     display.enable();
+
+    // Start audio receiver (stores incoming data via Storage)
+#ifdef ENABLE_MODEM
+    modemReceiver.begin();
+#endif
 
     // Enable interrupts globally
     interrupts();
@@ -33,13 +43,27 @@ void System::initialize()
 
 void System::loop()
 {
-    // Check if both buttons are pressed (active-low) for a shutdown request (long press on both buttons)
-    if (digitalRead(BUTTON1_PIN) == LOW && digitalRead(BUTTON2_PIN) == LOW)
+    // Process any incoming audio data
+#ifdef ENABLE_MODEM
+    modemReceiver.process();
+#endif
+
+    // Check if both buttons are pressed (active-low) for a shutdown request
+    bool both_low = button1_is_low() && button2_is_low();
+
+    if (both_low)
     {
+        // Require a short stable period with both buttons low
+        if (both_pressed_stable < BOTH_STABLE_THRESHOLD)
+        {
+            both_pressed_stable++;
+            return; // don't start counting toward shutdown yet
+        }
+
         /*
          * Naptime!
-         * (But not before both buttons have been pressed for at least
-         * SHUTDOWN_THRESHOLD * 0.256 ms)
+         * (After BOTH_STABLE_THRESHOLD stable polls, count at
+         * SHUTDOWN_THRESHOLD * poll-period)
          */
         if (want_shutdown < SHUTDOWN_THRESHOLD)
         {
@@ -49,10 +73,13 @@ void System::loop()
         {
             shutdown();
             want_shutdown = 0;
+            both_pressed_stable = 0;
         }
     }
     else
     {
+        // Any release or mismatch resets the detection
+        both_pressed_stable = 0;
         want_shutdown = 0;
     }
 }
@@ -92,7 +119,7 @@ void System::shutdown()
     display.show(&anim);
 
     // Wait until buttons are released
-    while (digitalRead(BUTTON1_PIN) == LOW || digitalRead(BUTTON2_PIN) == LOW)
+    while (button1_is_low() || button2_is_low())
     {
         display.update();
     }
@@ -111,7 +138,8 @@ void System::shutdown()
     power_adc_disable();
 
     // Enable pin-change interrupts on button pins for wakeup
-    PCMSK1 |= _BV(PCINT11) | _BV(PCINT15);
+    // Map: PC3 (A3) -> PCINT11 -> PCMSK1 bit 3, PC7 (A7) -> PCINT15 -> PCMSK1 bit 7
+    PCMSK1 |= _BV(3) | _BV(7);
     PCICR |= _BV(PCIE1);
 
     // Enter deep sleep (power-down)
@@ -122,13 +150,13 @@ void System::shutdown()
     sleep_disable();
 
     // After wakeup, disable pin-change interrupts
-    PCMSK1 &= ~(_BV(PCINT11) | _BV(PCINT15));
+    PCMSK1 &= ~( _BV(3) | _BV(7) );
 
     // Re-enable display
     display.enable();
 
     // Wait for buttons release post-wakeup
-    while (digitalRead(BUTTON1_PIN) == LOW || digitalRead(BUTTON2_PIN) == LOW)
+    while (button1_is_low() || button2_is_low())
     {
         display.update();
     }
