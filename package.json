@@ -1,0 +1,12 @@
+{
+  "name": "blinkenstar",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "test": "node --test",
+    "tone:test": "node scripts/play-sine.js"
+  },
+  "dependencies": {
+    "speaker": "^0.5.5"
+  }
+}
