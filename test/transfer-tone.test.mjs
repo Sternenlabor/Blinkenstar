@@ -1,18 +1,19 @@
-const test = require('node:test')
-const assert = require('node:assert/strict')
-const fs = require('node:fs')
-const path = require('node:path')
-
-const packageJson = JSON.parse(
-    fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8')
-)
-
-const {
+import test from 'node:test'
+import assert from 'node:assert/strict'
+import fs from 'node:fs'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+import {
     createTransferTestPattern,
     encodeTransferPayloads,
     createTransferSamples,
     createTransferPcmBuffer
-} = require('../scripts/lib/transfer-tone')
+} from '../scripts/lib/transfer-tone.mjs'
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const packageJson = JSON.parse(
+    fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8')
+)
 
 test('transfer encoder frames both legacy and alternate transfer payloads around the token text', () => {
     const pattern = createTransferTestPattern({ token: 'ZX4K2' })
@@ -41,5 +42,5 @@ test('transfer encoder generates one-shot audio samples and PCM output', () => {
 })
 
 test('package.json exposes the transfer:test script', () => {
-    assert.equal(packageJson.scripts['transfer:test'], 'node scripts/play-transfer-once.js')
+    assert.equal(packageJson.scripts['transfer:test'], 'node scripts/play-transfer-once.mjs')
 })

@@ -1,12 +1,12 @@
 #!/usr/bin/env node
-const { playBufferOnce } = require('./lib/audio-output')
+import { playBufferOnce } from './lib/audio-output.mjs'
 
-const {
+import {
     SAMPLE_RATE,
     createTransferPcmBuffer,
     createTransferTestPattern,
     randomToken
-} = require('./lib/transfer-tone')
+} from './lib/transfer-tone.mjs'
 
 async function main() {
     const token = randomToken(6)

@@ -13,7 +13,7 @@
 ### Task 1: Lock the environment matrix with a regression test
 
 **Files:**
-- Test: `test/platformio-envs.test.js`
+- Test: `test/platformio-envs.test.mjs`
 
 - [ ] **Step 1: Write the failing test**
 
@@ -24,7 +24,7 @@ Add a Node test that asserts:
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `node --test test/platformio-envs.test.js`
+Run: `node --test test/platformio-envs.test.mjs`
 Expected: FAIL because the old env names still exist and `jp1debug` does not enable the modem.
 
 ### Task 2: Consolidate PlatformIO environments
@@ -75,7 +75,7 @@ State that the sine-wave helper verifies the analog path only and does not gener
 ### Task 4: Verify the consolidated build matrix
 
 **Files:**
-- Test: `test/platformio-envs.test.js`
+- Test: `test/platformio-envs.test.mjs`
 - Verify: `firmware/platformio.ini`
 
 - [ ] **Step 1: Run the Node tests**

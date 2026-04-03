@@ -1,6 +1,6 @@
-const Speaker = require('speaker')
+import Speaker from 'speaker'
 
-function createMonoSpeakerOptions(sampleRate) {
+export function createMonoSpeakerOptions(sampleRate) {
     if (!Number.isInteger(sampleRate) || sampleRate <= 0) {
         throw new RangeError('sampleRate must be a positive integer')
     }
@@ -14,11 +14,11 @@ function createMonoSpeakerOptions(sampleRate) {
     }
 }
 
-function createMonoSpeaker(sampleRate, SpeakerClass = Speaker) {
+export function createMonoSpeaker(sampleRate, SpeakerClass = Speaker) {
     return new SpeakerClass(createMonoSpeakerOptions(sampleRate))
 }
 
-function playBufferOnce(buffer, { sampleRate, SpeakerClass = Speaker } = {}) {
+export function playBufferOnce(buffer, { sampleRate, SpeakerClass = Speaker } = {}) {
     return new Promise((resolve, reject) => {
         let settled = false
         let speaker
@@ -50,10 +50,4 @@ function playBufferOnce(buffer, { sampleRate, SpeakerClass = Speaker } = {}) {
         speaker.once('finish', finish)
         speaker.end(buffer)
     })
-}
-
-module.exports = {
-    createMonoSpeakerOptions,
-    createMonoSpeaker,
-    playBufferOnce
 }

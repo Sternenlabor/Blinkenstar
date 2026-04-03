@@ -1,9 +1,9 @@
-const { Readable } = require('node:stream')
+import { Readable } from 'node:stream'
 
 const TWO_PI = Math.PI * 2
 const INT16_MAX = 32767
 
-function createSineBuffer({ sampleRate, frequencyHz, amplitude, sampleCount, phase = 0 }) {
+export function createSineBuffer({ sampleRate, frequencyHz, amplitude, sampleCount, phase = 0 }) {
     if (!Number.isInteger(sampleCount) || sampleCount <= 0) {
         throw new RangeError('sampleCount must be a positive integer')
     }
@@ -37,7 +37,7 @@ function createSineBuffer({ sampleRate, frequencyHz, amplitude, sampleCount, pha
     return { buffer, phase: nextPhase }
 }
 
-class SineWavePcmStream extends Readable {
+export class SineWavePcmStream extends Readable {
     constructor({
         sampleRate = 48000,
         frequencyHz = 1000,
@@ -80,9 +80,4 @@ class SineWavePcmStream extends Readable {
         this.phase = phase
         this.push(buffer)
     }
-}
-
-module.exports = {
-    createSineBuffer,
-    SineWavePcmStream
 }

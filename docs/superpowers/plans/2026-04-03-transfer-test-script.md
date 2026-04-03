@@ -4,41 +4,41 @@
 
 **Goal:** Add a one-shot local transfer test script that reproduces the live site's audio upload framing with a distinctive text payload.
 
-**Architecture:** Implement a small CommonJS encoder module that builds both compatibility transfer formats from one text pattern, converts the generated float samples into 16-bit PCM, and feeds them to `speaker` from a simple CLI script. Keep tests focused on frame bytes and npm script registration.
+**Architecture:** Implement a small ESM `.mjs` encoder module that builds both compatibility transfer formats from one text pattern, converts the generated float samples into 16-bit PCM, and feeds them to `speaker` from a simple CLI script. Keep tests focused on frame bytes and npm script registration.
 
-**Tech Stack:** Node.js, CommonJS, `speaker`, `node:test`
+**Tech Stack:** Node.js ESM (`.mjs`), `speaker`, `node:test`
 
 ---
 
 ### Task 1: Lock Transfer Framing in Tests
 
 **Files:**
-- Create: `test/transfer-tone.test.js`
+- Create: `test/transfer-tone.test.mjs`
 - Modify: `/Users/afiedler/Documents/privat/SL/Blinkenstar/package.json`
 
 - [ ] **Step 1: Write the failing test**
 
-Create tests that require `scripts/lib/transfer-tone.js`, assert legacy and alternate raw frame markers, assert the chosen token bytes are embedded, and assert `package.json` exposes `transfer:test`.
+Create tests that import `scripts/lib/transfer-tone.mjs`, assert legacy and alternate raw frame markers, assert the chosen token bytes are embedded, and assert `package.json` exposes `transfer:test`.
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `node --test test/transfer-tone.test.js`
+Run: `node --test test/transfer-tone.test.mjs`
 Expected: FAIL because the transfer encoder module and script entry do not exist yet.
 
 - [ ] **Step 3: Implement minimal script registration**
 
-Add `transfer:test` to `package.json` pointing at `node scripts/play-transfer-test.js`.
+Add `transfer:test` to `package.json` pointing at `node scripts/play-transfer-once.mjs`.
 
 - [ ] **Step 4: Re-run test**
 
-Run: `node --test test/transfer-tone.test.js`
+Run: `node --test test/transfer-tone.test.mjs`
 Expected: still FAIL because encoder functions are not implemented yet.
 
 ### Task 2: Implement the Transfer Encoder
 
 **Files:**
-- Create: `scripts/lib/transfer-tone.js`
-- Test: `test/transfer-tone.test.js`
+- Create: `scripts/lib/transfer-tone.mjs`
+- Test: `test/transfer-tone.test.mjs`
 
 - [ ] **Step 1: Write the minimal encoder API**
 
@@ -61,13 +61,13 @@ Mirror the live site's legacy and alternate symbol and sync waveforms closely en
 
 - [ ] **Step 4: Run focused tests**
 
-Run: `node --test test/transfer-tone.test.js`
+Run: `node --test test/transfer-tone.test.mjs`
 Expected: PASS
 
 ### Task 3: Add the One-Shot Playback CLI
 
 **Files:**
-- Create: `scripts/play-transfer-test.js`
+- Create: `scripts/play-transfer-once.mjs`
 - Modify: `README.md`
 
 - [ ] **Step 1: Implement one-shot playback**

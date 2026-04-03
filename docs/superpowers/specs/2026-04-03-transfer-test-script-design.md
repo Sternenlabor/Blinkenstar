@@ -6,7 +6,7 @@ Add a one-shot Node script that emits the same two transfer waveforms the live e
 
 ## Scope
 
-- Recreate the live site's transfer framing and audio encoder logic in local CommonJS code.
+- Recreate the live site's transfer framing and audio encoder logic in local ESM `.mjs` code.
 - Generate a distinctive text payload that can be recognized on-device.
 - Expose the script as `npm run transfer:test`.
 - Keep the implementation self-contained in this repo without depending on a browser session or the live site at runtime.
@@ -35,9 +35,9 @@ The local script should transmit a single text animation with a message such as 
 
 ## Files
 
-- Create `scripts/lib/transfer-tone.js` for transfer payload building, byte framing, parity generation, waveform generation, and PCM conversion.
-- Create `scripts/play-transfer-test.js` for one-shot playback.
-- Add `test/transfer-tone.test.js` for framing and script registration checks.
+- Create `scripts/lib/transfer-tone.mjs` for transfer payload building, byte framing, parity generation, waveform generation, and PCM conversion.
+- Create `scripts/play-transfer-once.mjs` for one-shot playback.
+- Add `test/transfer-tone.test.mjs` for framing and script registration checks.
 - Update `package.json` to expose `transfer:test`.
 - Update `README.md` with transfer-test usage.
 

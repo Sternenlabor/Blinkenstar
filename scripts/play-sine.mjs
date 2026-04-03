@@ -1,8 +1,8 @@
 #!/usr/bin/env node
-const { pipeline } = require('node:stream')
+import { pipeline } from 'node:stream'
 
-const { createMonoSpeaker } = require('./lib/audio-output')
-const { SineWavePcmStream } = require('./lib/sine-wave')
+import { createMonoSpeaker } from './lib/audio-output.mjs'
+import { SineWavePcmStream } from './lib/sine-wave.mjs'
 
 const sampleRate = 48000
 const toneStream = new SineWavePcmStream({

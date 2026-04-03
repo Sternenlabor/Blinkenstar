@@ -1,8 +1,8 @@
-const test = require('node:test')
-const assert = require('node:assert/strict')
-const { EventEmitter } = require('node:events')
+import test from 'node:test'
+import assert from 'node:assert/strict'
+import { EventEmitter } from 'node:events'
 
-const { createMonoSpeakerOptions, playBufferOnce } = require('../scripts/lib/audio-output')
+import { createMonoSpeakerOptions, playBufferOnce } from '../scripts/lib/audio-output.mjs'
 
 class FakeSpeaker extends EventEmitter {
     constructor(options) {

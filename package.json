@@ -1,11 +1,11 @@
 {
   "name": "blinkenstar",
   "private": true,
-  "type": "commonjs",
+  "type": "module",
   "scripts": {
     "test": "node --test",
-    "tone:test": "node scripts/play-sine.js",
-    "transfer:test": "node scripts/play-transfer-once.js"
+    "tone:test": "node scripts/play-sine.mjs",
+    "transfer:test": "node scripts/play-transfer-once.mjs"
   },
   "dependencies": {
     "speaker": "^0.5.5"

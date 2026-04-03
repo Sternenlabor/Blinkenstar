@@ -30,9 +30,9 @@
 ## Coding Style And Naming Conventions
 
 - Follow `.prettierrc.json`: 4-space indent, single quotes, no semicolons, no trailing commas, `printWidth` 140.
-- Keep Node-side code in CommonJS unless the repository is intentionally migrated end to end.
+- Keep Node-side code in ESM `.mjs` and use explicit relative file extensions in imports.
 - Keep reusable JavaScript generators and encoders in `scripts/lib/` and keep `scripts/` entry points thin.
-- Preserve existing repo naming patterns. JavaScript files use lowercase kebab-case, while firmware modules use PascalCase header/source pairs.
+- Preserve existing repo naming patterns. JavaScript files use lowercase kebab-case `.mjs`, while firmware modules use PascalCase header/source pairs.
 - Add brief comments where behavior is not obvious, especially around modem thresholds, FEC or Hamming logic, timing assumptions, display multiplexing, pin mappings, and debug wiring.
 - Prefer small focused helpers over large mixed-responsibility files.
 - Do not casually rename or repurpose the consolidated PlatformIO environments. The test suite asserts their names and intended roles.

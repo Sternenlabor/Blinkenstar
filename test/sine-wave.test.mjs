@@ -1,7 +1,7 @@
-const test = require('node:test')
-const assert = require('node:assert/strict')
+import test from 'node:test'
+import assert from 'node:assert/strict'
 
-const { createSineBuffer } = require('../scripts/lib/sine-wave')
+import { createSineBuffer } from '../scripts/lib/sine-wave.mjs'
 
 test('createSineBuffer returns the requested number of 16-bit PCM samples', () => {
     const { buffer } = createSineBuffer({

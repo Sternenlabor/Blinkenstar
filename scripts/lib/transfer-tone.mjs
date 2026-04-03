@@ -1,4 +1,4 @@
-const crypto = require('node:crypto')
+import { randomBytes } from 'node:crypto'
 
 const SAMPLE_RATE = 48000
 const INT16_MAX = 32767
@@ -58,11 +58,11 @@ const ModernSymbols = [
     [Array(3).fill(1), Array(5).fill(1)]
 ]
 
-function randomToken(length = 6) {
-    return crypto.randomBytes(Math.ceil(length / 2)).toString('hex').toUpperCase().slice(0, length)
+export function randomToken(length = 6) {
+    return randomBytes(Math.ceil(length / 2)).toString('hex').toUpperCase().slice(0, length)
 }
 
-function createTransferTestPattern({
+export function createTransferTestPattern({
     token = randomToken(),
     speed = 0x0e,
     delay = 0,
@@ -256,7 +256,7 @@ function createModernSamples(fecBytes) {
     return samples
 }
 
-function encodeTransferPayloads(patterns) {
+export function encodeTransferPayloads(patterns) {
     const legacyRawBytes = buildLegacyRawBytes(patterns)
     const modernRawBytes = buildModernRawBytes(patterns)
 
@@ -268,7 +268,7 @@ function encodeTransferPayloads(patterns) {
     }
 }
 
-function createTransferSamples(patterns) {
+export function createTransferSamples(patterns) {
     const payloads = encodeTransferPayloads(patterns)
     const legacySamples = createLegacySamples(payloads.legacyFecBytes)
     const modernSamples = createModernSamples(payloads.modernFecBytes)
@@ -280,7 +280,7 @@ function createTransferSamples(patterns) {
     return combined
 }
 
-function createTransferPcmBuffer(patterns) {
+export function createTransferPcmBuffer(patterns) {
     const samples = createTransferSamples(patterns)
     const buffer = Buffer.alloc(samples.length * 2)
 
@@ -292,11 +292,4 @@ function createTransferPcmBuffer(patterns) {
     return buffer
 }
 
-module.exports = {
-    SAMPLE_RATE,
-    createTransferTestPattern,
-    encodeTransferPayloads,
-    createTransferSamples,
-    createTransferPcmBuffer,
-    randomToken
-}
+export { SAMPLE_RATE }
