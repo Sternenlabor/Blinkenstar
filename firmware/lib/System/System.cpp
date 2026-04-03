@@ -1,5 +1,6 @@
 #include "System.h"
 #include "Display.h"
+#include "DebugSerial.h"
 #include "static_patterns.h"
 #include <Arduino.h>
 #include <avr/interrupt.h>
@@ -9,16 +10,110 @@
 #include <avr/io.h>
 #ifdef ENABLE_MODEM
 #include "Receiver.h"
+#include "Modem.h"
 #endif
 
 System rocket;
 
-static uint8_t animationBuffer[128];
+static uint8_t animationBuffer[64];
 
 // Buttons are wired to Port C pins: PC3 (pin 26) and PC7 (pin 20)
 // Use direct port access to avoid any Arduino pin mapping ambiguity
 static inline bool button1_is_low() { return (PINC & _BV(PC3)) == 0; }
 static inline bool button2_is_low() { return (PINC & _BV(PC7)) == 0; }
+
+#if defined(ENABLE_MODEM) && defined(RX_ALWAYS_ON) && defined(NO_BOOT_MESSAGE) && !defined(DIAG_RX)
+static void showRxStandbyCue()
+{
+    // Keep a visible standby pattern in low-RAM RX builds that suppress
+    // the scrolling boot text. Receiver/display.show() will replace this
+    // once a real frame arrives.
+    display.clearColumns();
+    display.setColumn(0, 0x00);
+    display.setColumn(1, 0x7E);
+    display.setColumn(2, 0x7E);
+    display.setColumn(3, 0x7E);
+    display.setColumn(4, 0x7E);
+    display.setColumn(5, 0x7E);
+    display.setColumn(6, 0x7E);
+    display.setColumn(7, 0x00);
+}
+#endif
+
+#if defined(JP1_DEBUG_SERIAL) && defined(ENABLE_MODEM) && defined(JP1_DEBUG_TONE_DIAG)
+static void printIdleHeartbeat()
+{
+    debuglog::print("HB L=0x");
+    debuglog::printHex16(g_modem.getActivity());
+    debuglog::print(" A=0x");
+    debuglog::printHex16(g_modem.getActivityAvg());
+    debuglog::print(" T=");
+    debuglog::println(g_modem.isTonePresent() ? "1" : "0");
+}
+
+static void printToneSummary()
+{
+    // Summarize the most recent burst in a compact JP1 log line for UART capture during bench bring-up.
+    debuglog::print("RX P=0x");
+    debuglog::printHex16(g_modem.consumeActivityPeak());
+    debuglog::print(" X=0x");
+    debuglog::printHex8(g_modem.consumeTransitionCount());
+    debuglog::print(" D=");
+    uint8_t recent_bytes[8];
+    modemReceiver.getLastBytes(recent_bytes);
+    for (uint8_t i = 0; i < 8; ++i)
+    {
+        debuglog::printHex8(recent_bytes[i]);
+    }
+    debuglog::print(" S=");
+    uint8_t start_bytes[8];
+    uint8_t start_count = 0;
+    modemReceiver.getStartBytes(start_bytes, start_count);
+    debuglog::printHex8(start_count);
+    debuglog::print(":");
+    for (uint8_t i = 0; i < 8; ++i)
+    {
+        debuglog::printHex8(start_bytes[i]);
+    }
+    debuglog::print(" E=");
+    const uint8_t events = modemReceiver.consumeDiagEvents();
+    if (events == 0)
+    {
+        debuglog::write('-');
+    }
+    else
+    {
+        if (events & ModemReceiver::DIAG_EVENT_START)
+        {
+            debuglog::write('S');
+        }
+        if (events & ModemReceiver::DIAG_EVENT_PATTERN1)
+        {
+            debuglog::write('1');
+        }
+        if (events & ModemReceiver::DIAG_EVENT_PATTERN2)
+        {
+            debuglog::write('2');
+        }
+        if (events & ModemReceiver::DIAG_EVENT_END)
+        {
+            debuglog::write('E');
+        }
+        if (events & ModemReceiver::DIAG_EVENT_FRAME)
+        {
+            debuglog::write('F');
+        }
+    }
+    const uint16_t diag_length = modemReceiver.getDiagLength();
+    if (diag_length != 0)
+    {
+        debuglog::print(" N=0x");
+        debuglog::printHex16(diag_length);
+    }
+    debuglog::write('\r');
+    debuglog::write('\n');
+}
+#endif
 
 void System::initialize()
 {
@@ -29,12 +124,42 @@ void System::initialize()
     DDRC &= ~( _BV(PC3) | _BV(PC7) );   // inputs
     PORTC |= _BV(PC3) | _BV(PC7);       // enable pull-ups
 
+    debuglog::begin();
+    debuglog::println("BOOT");
+    debuglog::print("MCUSR=0x");
+    debuglog::printlnHex8(MCUSR);
+
     // Initialize display
     display.enable();
-
-    // Start audio receiver (stores incoming data via Storage)
+#if defined(ENABLE_MODEM) && defined(RX_ALWAYS_ON) && defined(NO_BOOT_MESSAGE) && !defined(DIAG_RX)
+    showRxStandbyCue();
+#endif
 #ifdef ENABLE_MODEM
-    modemReceiver.begin();
+#ifdef RX_ALWAYS_ON
+  #ifdef DIAG_RX
+    // Diagnostic: show reset cause + heartbeat first; start modem after delay
+    uint8_t mcusr = MCUSR;
+    MCUSR = 0;
+    diag_reset_cause = mcusr;
+    diag_boot_phase = true;
+    diag_boot_end_ms = millis() + 1500;
+    // Build small reset cause text
+    static uint8_t rst_text[12];
+    uint8_t n = 0;
+    rst_text[n++] = 'R'; rst_text[n++] = 'S'; rst_text[n++] = 'T'; rst_text[n++] = ':'; rst_text[n++] = ' ';
+    if (mcusr & _BV(WDRF)) { rst_text[n++] = 'W'; rst_text[n++] = 'D'; rst_text[n++] = 'T'; }
+    else if (mcusr & _BV(BORF)) { rst_text[n++] = 'B'; rst_text[n++] = 'O'; rst_text[n++] = 'R'; }
+    else if (mcusr & _BV(EXTRF)) { rst_text[n++] = 'E'; rst_text[n++] = 'X'; rst_text[n++] = 'T'; }
+    else if (mcusr & _BV(PORF)) { rst_text[n++] = 'P'; rst_text[n++] = 'O'; rst_text[n++] = 'R'; }
+    else { rst_text[n++] = 'O'; rst_text[n++] = 'K'; }
+    animation_t a; a.type = AnimationType::TEXT; a.length = n; a.speed = 10; a.delay = 0; a.direction = 0; a.repeat = 0; a.data = rst_text;
+    display.show(&a);
+  #else
+    // Store env: defer modem start slightly to let display stabilize
+    modem_enabled = false;
+    modem_boot_delay = 500; // number of loop ticks before enabling
+  #endif
+#endif
 #endif
 
     // Enable interrupts globally
@@ -43,9 +168,135 @@ void System::initialize()
 
 void System::loop()
 {
-    // Process any incoming audio data
+#if defined(JP1_DEBUG_SERIAL) && !defined(JP1_DEBUG_NO_HEARTBEAT)
+    const unsigned long now = millis();
+#if defined(ENABLE_MODEM) && defined(JP1_DEBUG_TONE_DIAG)
+    const bool tone_present = g_modem.isTonePresent();
+    if (tone_present)
+    {
+        debug_tone_active_ = true;
+    }
+    else if (debug_tone_active_)
+    {
+        debug_tone_active_ = false;
+        debug_tone_report_pending_ = true;
+    }
+#endif
+    if (debug_heartbeat_at_ms == 0)
+    {
+        debug_heartbeat_at_ms = now + 1000;
+    }
+    else if ((long)(now - debug_heartbeat_at_ms) >= 0)
+    {
 #ifdef ENABLE_MODEM
-    modemReceiver.process();
+#ifdef JP1_DEBUG_TONE_DIAG
+        if (debug_tone_report_pending_)
+        {
+            printToneSummary();
+            debug_tone_report_pending_ = false;
+        }
+        else if (!tone_present)
+        {
+            printIdleHeartbeat();
+        }
+#else
+        printIdleHeartbeat();
+#endif
+#else
+        debuglog::heartbeat();
+#endif
+        debug_heartbeat_at_ms = now + 1000;
+    }
+#endif
+
+    // Optional: receive-mode toggle + processing
+#ifdef ENABLE_MODEM
+#ifndef RX_ALWAYS_ON
+    // Toggle modem/receiver on long-press of Button2 (PC7)
+    if (button2_is_low())
+    {
+        if (btn2_hold < RECEIVE_HOLD_TICKS)
+            btn2_hold++;
+        else if (!btn2_latched)
+        {
+            // Toggle state once per long hold
+            modem_enabled = !modem_enabled;
+            if (modem_enabled)
+            {
+                modemReceiver.begin();
+                display.setIndicator(7, 0, 20); // enabled
+            }
+            else
+            {
+                modemReceiver.end();
+                display.setIndicator(7, 7, 20); // disabled
+            }
+            btn2_latched = true;
+        }
+    }
+    else
+    {
+        btn2_hold = 0;
+        btn2_latched = false;
+    }
+#endif
+
+    // For RX_ALWAYS_ON, enable modem after a short boot delay
+#ifdef RX_ALWAYS_ON
+  #ifndef DIAG_RX
+    // Give the display and analog front-end a short quiet period before enabling receive mode.
+    if (!modem_enabled)
+    {
+        unsigned long now = millis();
+        if (modem_enable_at_ms == 0)
+        {
+            modem_enable_at_ms = now + 1000; // enable after ~1 s
+        }
+        if ((long)(now - modem_enable_at_ms) >= 0)
+        {
+            modem_enabled = true;
+            modemReceiver.begin();
+            debuglog::println("MODEM ON");
+        }
+    }
+  #else
+    // DIAG_RX: show reset text; start modem after delay, no heartbeat
+    unsigned long now = millis();
+    if (diag_boot_phase)
+    {
+        if (now >= diag_boot_end_ms)
+        {
+            diag_boot_phase = false;
+            modem_enabled = true;
+            modemReceiver.begin();
+        }
+    }
+  #endif
+#endif
+
+    if (modem_enabled)
+    {
+        // Process first; if a frame completed, leave receive mode and keep the shown pattern
+        modemReceiver.process();
+        if (modemReceiver.hasFrameComplete())
+        {
+#if defined(JP1_DEBUG_SERIAL) && !defined(JP1_DEBUG_NO_HEARTBEAT) && defined(JP1_DEBUG_TONE_DIAG)
+            printToneSummary();
+            debug_tone_report_pending_ = false;
+            debug_tone_active_ = false;
+#endif
+            // Drop back out of receive mode once one transfer has been fully decoded and displayed.
+            modem_enabled = false;
+            modemReceiver.end();
+            debuglog::println("FRAME DONE");
+            display.setIndicator(7, 7, 20); // disabled
+        }
+        else
+        {
+            // In rxdiag, suppress live inspector to avoid bright lines; rely on RW/HX text only
+            // No additional drawing here.
+        }
+    }
 #endif
 
     // Check if both buttons are pressed (active-low) for a shutdown request
@@ -87,6 +338,8 @@ void System::loop()
 void System::shutdown()
 {
     uint8_t i;
+
+    debuglog::println("SHUTDOWN");
 
     // Load shutdown animation from PROGMEM
     const uint8_t *pattern = shutdownPattern;
@@ -170,6 +423,8 @@ void System::shutdown()
 
     // Re-enable ADC
     power_adc_enable();
+
+    debuglog::println("WAKE");
 }
 
 // ISR for wakeup via button presses

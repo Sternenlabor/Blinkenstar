@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Arduino.h>
+#include "ActivitySlicer.h"
 
 // Receive-only audio modem using ADC free-running mode and simple FSK-like detection
 class Modem
@@ -21,6 +22,27 @@ public:
 
     // Polling alternative to ISR to reduce contention with display
     void poll(uint8_t budget = 64);
+
+    // Diagnostics: expose recent activity (sum of absolute deltas)
+    uint16_t getActivity() const { return last_activity_; }
+    uint16_t getActivityAvg() const { return slicer_.average(); }
+    uint16_t consumeActivityPeak()
+    {
+        uint16_t peak = activity_peak_;
+        activity_peak_ = last_activity_;
+        return peak;
+    }
+    uint8_t consumeTransitionCount()
+    {
+        uint8_t count = transition_count_;
+        transition_count_ = 0;
+        return count;
+    }
+    bool isTonePresent() const { return slicer_.tonePresent(); }
+
+    // Diagnostics: capture recent raw bytes (pre-FEC)
+    void clearRecentRaw() { recent_count_ = 0; }
+    uint8_t getRecentRaw(uint8_t *out, uint8_t max_n) const;
 
 private:
     // ring buffer (size must be power of 2)
@@ -54,10 +76,22 @@ private:
     #ifndef MODEM_BITLEN_THRESHOLD
     #define MODEM_BITLEN_THRESHOLD 6
     #endif
+    #ifndef MODEM_TONE_DIAG_ON_THRESHOLD
+    #define MODEM_TONE_DIAG_ON_THRESHOLD 12
+    #endif
+    #ifndef MODEM_TONE_DIAG_OFF_THRESHOLD
+    #define MODEM_TONE_DIAG_OFF_THRESHOLD 8
+    #endif
+    #ifndef MODEM_ACTIVITY_SPAN_THRESHOLD
+    #define MODEM_ACTIVITY_SPAN_THRESHOLD 24
+    #endif
 
     static constexpr uint8_t NUMBER_OF_SAMPLES = MODEM_NUMBER_OF_SAMPLES;
     static constexpr uint16_t ACTIVITY_THRESHOLD = MODEM_ACTIVITY_THRESHOLD;
     static constexpr uint8_t BITLEN_THRESHOLD = MODEM_BITLEN_THRESHOLD;
+    static constexpr uint16_t TONE_DIAG_ON_THRESHOLD = MODEM_TONE_DIAG_ON_THRESHOLD;
+    static constexpr uint16_t TONE_DIAG_OFF_THRESHOLD = MODEM_TONE_DIAG_OFF_THRESHOLD;
+    static constexpr uint16_t ACTIVITY_SPAN_THRESHOLD = MODEM_ACTIVITY_SPAN_THRESHOLD;
 
     uint8_t bitcount_ = 0;
     uint8_t byte_ = 0;
@@ -68,6 +102,19 @@ private:
     uint8_t bitlen_ = 0;
     uint8_t freq_ = FREQ_NONE;
     uint8_t prev_freq_ = FREQ_NONE;
+
+    // Diagnostics state
+    uint16_t last_activity_ = 0;
+    uint16_t activity_peak_ = 0;
+    uint8_t transition_count_ = 0;
+    ActivitySlicer<ACTIVITY_THRESHOLD, TONE_DIAG_ON_THRESHOLD, TONE_DIAG_OFF_THRESHOLD, ACTIVITY_SPAN_THRESHOLD> slicer_;
+
+    // Recent raw bytes ring (pre-FEC), newest at rec_idx_-1
+    uint8_t recent_[8] = {0};
+    uint8_t recent_idx_ = 0;
+    uint8_t recent_count_ = 0;
+
+    void processActivity_(uint16_t activity);
 };
 
 extern Modem g_modem;

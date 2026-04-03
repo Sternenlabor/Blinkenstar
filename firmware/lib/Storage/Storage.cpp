@@ -8,8 +8,50 @@
  */
 
 #include <Arduino.h>
-#include <Wire.h>
+#include <avr/io.h>
+#include <util/delay.h>
 #include "Storage.h"
+
+// Minimal TWI helpers
+static inline void twi_stop()
+{
+    TWCR = _BV(TWINT) | _BV(TWEN) | _BV(TWSTO);
+}
+
+static bool twi_start(uint8_t sla_rw)
+{
+    TWCR = _BV(TWINT) | _BV(TWSTA) | _BV(TWEN);
+    while (!(TWCR & _BV(TWINT)))
+        ;
+    TWDR = sla_rw;
+    TWCR = _BV(TWINT) | _BV(TWEN);
+    while (!(TWCR & _BV(TWINT)))
+        ;
+    // Check for ACK
+    uint8_t status = TWSR & 0xF8;
+    return (status == 0x18) || (status == 0x40); // SLA+W ACK or SLA+R ACK
+}
+
+static bool twi_write(uint8_t v)
+{
+    TWDR = v;
+    TWCR = _BV(TWINT) | _BV(TWEN);
+    while (!(TWCR & _BV(TWINT)))
+        ;
+    uint8_t status = TWSR & 0xF8;
+    return (status == 0x28); // data ACK
+}
+
+static uint8_t twi_read(bool ack)
+{
+    if (ack)
+        TWCR = _BV(TWINT) | _BV(TWEN) | _BV(TWEA);
+    else
+        TWCR = _BV(TWINT) | _BV(TWEN);
+    while (!(TWCR & _BV(TWINT)))
+        ;
+    return TWDR;
+}
 
 Storage storage;
 
@@ -52,10 +94,11 @@ void Storage::enable()
      * let TWPS = "00" = 1
      * -> TWBR = (F_CPU / 100000) - 16 / 2
      */
-    TWSR = 0; // the lower two bits control TWPS
+    // Configure TWI for ~100 kHz
+    TWSR = 0; // prescaler = 1
     TWBR = ((F_CPU / 100000UL) - 16) / 2;
-    Wire.begin();
 
+    // Metadata byte 0 always mirrors the saved animation count.
     i2c_read(0, 0, 1, &num_anims);
 }
 
@@ -127,6 +170,7 @@ void Storage::save(uint8_t *data)
         if (first_free_page < 248)
         {
             num_anims++;
+            // Persist the page pointer immediately so later append() calls know where the pattern starts.
             i2c_write(0, num_anims, 1, &first_free_page);
             append(data);
         }
@@ -154,22 +198,41 @@ uint8_t Storage::i2c_write(uint8_t addrhi, uint8_t addrlo, uint8_t len, uint8_t 
      * All other error conditions (even though they should never happen[tm])
      * are handled the same way.
      */
-    for (uint8_t num_tries = 0; num_tries < 32; num_tries++)
+    for (uint8_t num_tries = 0; num_tries < 8; num_tries++)
     {
-        if (num_tries > 0)
+        if (!twi_start((I2C_EEPROM_ADDR << 1) | 0))
+            continue;
+        if (!twi_write(addrhi))
         {
-            delayMicroseconds(500);
+            twi_stop();
+            continue;
         }
-
-        Wire.beginTransmission(I2C_EEPROM_ADDR);
-        Wire.write(addrhi);
-        Wire.write(addrlo);
-        Wire.write(data, len);
-
-        if (Wire.endTransmission() == 0)
+        if (!twi_write(addrlo))
         {
-            return I2C_OK;
+            twi_stop();
+            continue;
         }
+        for (uint8_t i = 0; i < len; i++)
+        {
+            if (!twi_write(data[i]))
+            {
+                twi_stop();
+                return I2C_ERR;
+            }
+        }
+        twi_stop();
+
+        // The EEPROM NACKs while internally programming the page, so ACK polling is the cheapest ready check.
+        for (uint8_t p = 0; p < 50; ++p) // up to ~5ms total
+        {
+            if (twi_start((I2C_EEPROM_ADDR << 1) | 0))
+            {
+                twi_stop();
+                return I2C_OK;
+            }
+            _delay_us(100);
+        }
+        twi_stop();
     }
     return I2C_ERR;
 }
@@ -179,32 +242,32 @@ uint8_t Storage::i2c_read(uint8_t addrhi, uint8_t addrlo, uint8_t len, uint8_t *
     /*
      * See comments in i2c_write.
      */
-    for (uint8_t num_tries = 0; num_tries < 32; num_tries++)
+    for (uint8_t num_tries = 0; num_tries < 8; num_tries++)
     {
-        if (num_tries > 0)
+        if (!twi_start((I2C_EEPROM_ADDR << 1) | 0))
+            continue;
+        if (!twi_write(addrhi))
         {
-            delayMicroseconds(500);
-        }
-
-        Wire.beginTransmission(I2C_EEPROM_ADDR);
-        Wire.write(addrhi);
-        Wire.write(addrlo);
-
-        if (Wire.endTransmission(false) != 0)
-        { // Restart for read
+            twi_stop();
             continue;
         }
-
-        uint8_t received = Wire.requestFrom(I2C_EEPROM_ADDR, len);
-        if (received != len)
+        if (!twi_write(addrlo))
         {
+            twi_stop();
             continue;
         }
-
+        // Repeated START and SLA+R
+        if (!twi_start((I2C_EEPROM_ADDR << 1) | 1))
+        {
+            twi_stop();
+            continue;
+        }
         for (uint8_t i = 0; i < len; i++)
         {
-            data[i] = Wire.read();
+            bool ack = (i < (len - 1));
+            data[i] = twi_read(ack);
         }
+        twi_stop();
         return I2C_OK;
     }
     return I2C_ERR;

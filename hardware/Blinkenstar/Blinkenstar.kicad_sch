@@ -6,8 +6,8 @@
 	(paper "A3")
 	(title_block
 		(title "Blinkenstar")
-		(date "2025-03-28")
-		(rev "2.7")
+		(date "2026-04-02")
+		(rev "2.8")
 		(company "Sternenlabor e.V.")
 		(comment 1 "André Fiedler <mail@andrefiedler.de>")
 	)
@@ -18814,7 +18814,7 @@
 	)
 	(wire
 		(pts
-			(xy 260.35 147.32) (xy 271.78 147.32)
+			(xy 260.35 147.32) (xy 275.59 147.32)
 		)
 		(stroke
 			(width 0.1524)
@@ -19484,7 +19484,7 @@
 	)
 	(wire
 		(pts
-			(xy 260.35 142.24) (xy 269.24 142.24)
+			(xy 260.35 142.24) (xy 275.59 142.24)
 		)
 		(stroke
 			(width 0.1524)
@@ -20603,7 +20603,7 @@
 		(uuid "68d091a5-fadc-41a3-b13f-7930daa8231f")
 	)
 	(label "TRIG1"
-		(at 271.78 147.32 0)
+		(at 275.59 147.32 0)
 		(effects
 			(font
 				(size 1.2446 1.2446)
@@ -20973,7 +20973,7 @@
 		(uuid "e34a1dd5-245f-41cb-bcbc-fe7aa883a367")
 	)
 	(label "AVR_AUDIO_IN"
-		(at 269.24 142.24 0)
+		(at 275.59 142.24 0)
 		(effects
 			(font
 				(size 1.2446 1.2446)
@@ -21111,6 +21111,15 @@
 			)
 		)
 		(property "Description" "I2C Serial EEPROM, 1Kb (128x8) with Unique Serial Number, SO8"
+			(at 209.55 107.95 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C79988"
 			(at 209.55 107.95 0)
 			(effects
 				(font
@@ -21265,6 +21274,15 @@
 		)
 		(property "Description" "Resistor"
 			(at 233.68 101.6 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C25804"
+			(at 233.68 101.6 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -21578,6 +21596,15 @@
 				(hide yes)
 			)
 		)
+		(property "LCSC" "C1623"
+			(at 205.74 154.94 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "1"
 			(uuid "73603ed6-cd36-4988-a213-82e8de09e747")
 		)
@@ -21640,6 +21667,15 @@
 			)
 		)
 		(property "Description" ""
+			(at 106.68 195.58 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C217814"
 			(at 106.68 195.58 0)
 			(effects
 				(font
@@ -21776,6 +21812,15 @@
 			)
 		)
 		(property "Description" "Single-cell battery"
+			(at 314.96 157.48 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C19184089"
 			(at 314.96 157.48 0)
 			(effects
 				(font
@@ -21937,6 +21982,15 @@
 				(hide yes)
 			)
 		)
+		(property "LCSC" "C7420318"
+			(at 114.3 204.47 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "1"
 			(uuid "92463b57-f9bd-4dba-95f9-0b974fdb9f80")
 		)
@@ -22000,6 +22054,15 @@
 			)
 		)
 		(property "Description" "12MHz, 8kB Flash, 512B SRAM, 64B EEPROM, TQFP-32"
+			(at 245.11 180.34 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C111451"
 			(at 245.11 180.34 0)
 			(effects
 				(font
@@ -22326,6 +22389,15 @@
 				(hide yes)
 			)
 		)
+		(property "LCSC" "C393938"
+			(at 303.53 66.04 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "2"
 			(uuid "60c778ac-d076-49d1-975d-6e8b5c47813c")
 		)
@@ -22488,6 +22560,15 @@
 					(size 1.27 1.27)
 				)
 				(justify bottom)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C393938"
+			(at 303.53 43.18 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
 				(hide yes)
 			)
 		)
@@ -22689,6 +22770,15 @@
 			)
 		)
 		(property "Description" "Audio Jack, 2 Poles (Mono / TS), Grounded Sleeve"
+			(at 91.44 198.12 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C16684"
 			(at 91.44 198.12 0)
 			(effects
 				(font
@@ -22965,6 +23055,15 @@
 				(hide yes)
 			)
 		)
+		(property "LCSC" "C7420318"
+			(at 119.38 204.47 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "1"
 			(uuid "9f087261-cb9f-4264-99d3-637f0d2823f3")
 		)
@@ -23093,6 +23192,15 @@
 		)
 		(property "Description" "Resistor"
 			(at 246.38 101.6 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C25804"
+			(at 246.38 101.6 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -23437,6 +23545,15 @@
 			)
 		)
 		(property "Description" ""
+			(at 127 195.58 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C19702"
 			(at 127 195.58 0)
 			(effects
 				(font
@@ -24041,6 +24158,15 @@
 				(hide yes)
 			)
 		)
+		(property "LCSC" "C23212"
+			(at 137.16 203.2 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "1"
 			(uuid "893c808c-a234-48d6-80bc-9aef69f9ceea")
 		)
@@ -24252,6 +24378,15 @@
 				(hide yes)
 			)
 		)
+		(property "LCSC" "C25981"
+			(at 137.16 185.42 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "1"
 			(uuid "6c8eafb4-4adb-4db7-a450-5d05716fe07c")
 		)
@@ -24313,6 +24448,15 @@
 			)
 		)
 		(property "Description" ""
+			(at 147.32 203.2 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C1623"
 			(at 147.32 203.2 0)
 			(effects
 				(font
@@ -24596,6 +24740,15 @@
 		)
 		(property "Description" "Resistor"
 			(at 218.44 73.66 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C25804"
+			(at 218.44 73.66 90)
 			(effects
 				(font
 					(size 1.27 1.27)

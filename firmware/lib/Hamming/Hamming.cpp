@@ -27,6 +27,7 @@ const uint8_t Hamming::parityCheck[] PROGMEM = {
 
 uint8_t Hamming::parity128(uint8_t byte)
 {
+    // Match the nibble-parity layout used by both the AVR receiver and the JS transfer generator.
     return pgm_read_byte(&parityLow[byte & 0x0F]) ^ pgm_read_byte(&parityHigh[byte >> 4]);
 }
 
@@ -47,6 +48,7 @@ uint8_t Hamming::correct128(uint8_t &byte, uint8_t parity)
     }
     if (result != ERROR_IN_PARITY)
     {
+        // Data-bit errors are corrected in place so higher layers only need an error count.
         byte ^= result;
     }
     return 1;
@@ -59,4 +61,3 @@ uint8_t Hamming::correct2416(uint8_t &byte1, uint8_t &byte2, uint8_t parity)
         return 0;
     return correct128(byte1, err) + correct128(byte2, err >> 4);
 }
-

@@ -8,8 +8,10 @@ static Timer timer;
 Display display; // Global display instance
 
 // Buffers for the static turn-on pattern
+#if !defined(DIAG_BUTTONS) && !defined(NO_BOOT_MESSAGE)
 static animation_t activeAnimation;
-static uint8_t activeAnimationData[128];
+static uint8_t activeAnimationData[64];
+#endif
 
 // Timer interrupt handler: calls multiplexing
 static void onTimerTick()
@@ -34,8 +36,8 @@ void Display::enable()
     timer.attachInterrupt(onTimerTick);
     timer.start();
 
-    // --- Initialize turn-on animation pattern (skip in diagnostics) ---
-#ifndef DIAG_BUTTONS
+    // --- Initialize turn-on animation pattern (skip in diagnostics or when disabled) ---
+#if !defined(DIAG_BUTTONS) && !defined(NO_BOOT_MESSAGE)
     const uint8_t *pattern = emptyPattern; // PROGMEM pointer
     uint8_t hdr0 = pgm_read_byte(pattern);
     uint8_t hdr1 = pgm_read_byte(pattern + 1);
@@ -93,7 +95,7 @@ void Display::multiplex()
         rows &= (uint8_t)~_BV(indicator_row);
     }
     PORTD = rows;
-    // Enable the active column (active-low)
+    // The matrix uses active-low column selection, so driving one bit high selects that transistor.
     PORTB = (1 << active_col);
 
     // Next column
@@ -195,6 +197,9 @@ void Display::show(animation_t *anim)
             str_pos = current_anim->length - 1;
         }
     }
+    // Trigger an immediate render of the first frame
+    need_update = 1;
+    update();
 }
 
 // Update display content when needed (called from interrupt)
@@ -261,7 +266,7 @@ void Display::update()
                 }
             }
 
-            // Append one column (active-low)
+            // Glyphs are streamed one column at a time so long text can scroll without a full frame buffer.
             if (current_anim->direction == 0)
             {
                 // New data on rightmost column
