@@ -11,6 +11,9 @@
 #ifndef BOTH_STABLE_THRESHOLD
 #define BOTH_STABLE_THRESHOLD 32
 #endif
+#ifndef MODEM_BOOT_DELAY_MS
+#define MODEM_BOOT_DELAY_MS 1000UL
+#endif
 
 class System
 {

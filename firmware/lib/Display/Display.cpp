@@ -6,12 +6,7 @@
 
 static Timer timer;
 Display display; // Global display instance
-
-// Buffers for the static turn-on pattern
-#if !defined(DIAG_BUTTONS) && !defined(NO_BOOT_MESSAGE)
-static animation_t activeAnimation;
-static uint8_t activeAnimationData[64];
-#endif
+static constexpr uint8_t kBootMessageLength = sizeof(emptyPattern) - 4;
 
 // Timer interrupt handler: calls multiplexing
 static void onTimerTick()
@@ -37,48 +32,8 @@ void Display::enable()
     timer.start();
 
     // --- Initialize turn-on animation pattern (skip in diagnostics or when disabled) ---
-#if !defined(DIAG_BUTTONS) && !defined(NO_BOOT_MESSAGE)
-    const uint8_t *pattern = emptyPattern; // PROGMEM pointer
-    uint8_t hdr0 = pgm_read_byte(pattern);
-    uint8_t hdr1 = pgm_read_byte(pattern + 1);
-
-    activeAnimation.type = (AnimationType)(hdr0 >> 4);
-    activeAnimation.length = ((hdr0 & 0x0F) << 8) | hdr1;
-
-    uint8_t p2 = pgm_read_byte(pattern + 2);
-    uint8_t p3 = pgm_read_byte(pattern + 3);
-
-    if (activeAnimation.type == AnimationType::TEXT)
-    {
-        activeAnimation.speed = 250 - (p2 & 0xf0);
-        activeAnimation.delay = (p2 & 0x0f);
-        activeAnimation.direction = (p3 >> 4);
-        activeAnimation.repeat = (p3 & 0x0f);
-    }
-    else if (activeAnimation.type == AnimationType::FRAMES)
-    {
-        activeAnimation.speed = 250 - ((p2 & 0x0F) << 4);
-        activeAnimation.delay = (p3 >> 4);
-        activeAnimation.direction = 0;
-        activeAnimation.repeat = (p3 & 0x0F);
-    }
-
-    // Copy the column data bytes into RAM
-    uint16_t len = activeAnimation.length;
-    if (len > 128)
-    {
-        len = 128;
-    }
-    for (uint16_t i = 0; i < len; i++)
-    {
-        activeAnimationData[i] = pgm_read_byte(pattern + 4 + i);
-    }
-    activeAnimation.data = activeAnimationData;
-
-    // Show the turn-on animation and render the first frame
-    show(&activeAnimation);
-    need_update = 1;
-    update();
+#if (!defined(DIAG_BUTTONS) || defined(DIAG_BOOT_MESSAGE)) && !defined(NO_BOOT_MESSAGE)
+    showBootMessage();
 #endif
 }
 
@@ -183,10 +138,49 @@ void Display::clearIndicator()
     indicator_frames = 0;
 }
 
+void Display::snapshotState(DisplayState &state) const
+{
+    for (uint8_t i = 0; i < 8; ++i)
+    {
+        state.columns[i] = disp_buf[i];
+    }
+    state.indicator_active = indicator_active;
+    state.indicator_col = indicator_col;
+    state.indicator_row = indicator_row;
+    state.indicator_frames = indicator_frames;
+}
+
+void Display::restoreState(const DisplayState &state)
+{
+    for (uint8_t i = 0; i < 8; ++i)
+    {
+        disp_buf[i] = state.columns[i];
+    }
+
+    indicator_active = state.indicator_active;
+    indicator_col = state.indicator_col;
+    indicator_row = state.indicator_row;
+    indicator_frames = state.indicator_frames;
+
+    // Restore the saved visible frame as a static image. This prevents the
+    // temporary shutdown animation from continuing to run after wake.
+    current_anim = nullptr;
+    current_anim_progmem = false;
+    update_cnt = 0;
+    need_update = 0;
+    update_threshold = 0;
+    str_pos = 0;
+    str_chunk = 0;
+    char_pos = -1;
+    repeat_cnt = 0;
+    status = RUNNING;
+}
+
 // Start a new animation
 void Display::show(animation_t *anim)
 {
     current_anim = anim;
+    current_anim_progmem = false;
     reset();
     update_threshold = current_anim->speed;
     if (current_anim->direction == 1)
@@ -202,14 +196,92 @@ void Display::show(animation_t *anim)
     update();
 }
 
+void Display::showBootMessage()
+{
+    current_anim = nullptr;
+    current_anim_progmem = true;
+    reset();
+
+    const uint8_t p2 = pgm_read_byte(emptyPattern + 2);
+    const uint8_t p3 = pgm_read_byte(emptyPattern + 3);
+    const uint8_t hdr0 = pgm_read_byte(emptyPattern);
+    const AnimationType type = static_cast<AnimationType>(hdr0 >> 4);
+
+    if (type == AnimationType::TEXT)
+    {
+        update_threshold = 250 - (p2 & 0xF0);
+    }
+    else
+    {
+        update_threshold = 250 - ((p2 & 0x0F) << 4);
+    }
+
+    if ((p3 >> 4) == 1)
+    {
+        const uint8_t hdr1 = pgm_read_byte(emptyPattern + 1);
+        const uint16_t length = ((hdr0 & 0x0F) << 8) | hdr1;
+        if (length > 0)
+        {
+            str_pos = length - 1;
+        }
+    }
+
+    need_update = 1;
+    update();
+}
+
 // Update display content when needed (called from interrupt)
 void Display::update()
 {
-    if (!need_update || !current_anim)
+    if (!need_update)
     {
         return;
     }
     need_update = 0;
+
+    const bool boot_message_active = current_anim == nullptr && current_anim_progmem;
+
+    if (!current_anim && !boot_message_active)
+    {
+        return;
+    }
+
+    if (boot_message_active)
+    {
+        if (status == RUNNING)
+        {
+            for (uint8_t i = 0; i < 7; i++)
+            {
+                disp_buf[i] = disp_buf[i + 1];
+            }
+
+            uint8_t glyphIndex = pgm_read_byte(emptyPattern + 4 + str_pos);
+            const uint8_t *glyph_addr = (const uint8_t *)pgm_read_ptr(&font[glyphIndex]);
+            uint8_t glyph_len = pgm_read_byte(&glyph_addr[0]);
+            char_pos++;
+
+            if (char_pos > glyph_len)
+            {
+                char_pos = 0;
+                str_pos = (str_pos + 1) % kBootMessageLength;
+            }
+
+            if (char_pos == 0)
+            {
+                disp_buf[7] = 0xFF;
+            }
+            else
+            {
+                disp_buf[7] = ~pgm_read_byte(&glyph_addr[char_pos]);
+            }
+        }
+        else if (status == PAUSED)
+        {
+            str_pos = 0;
+            status = RUNNING;
+        }
+        return;
+    }
 
     if (status == RUNNING)
     {

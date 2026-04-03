@@ -30,6 +30,15 @@ struct animation
 };
 typedef struct animation animation_t;
 
+struct DisplayState
+{
+    uint8_t columns[8];
+    bool indicator_active;
+    uint8_t indicator_col;
+    uint8_t indicator_row;
+    uint8_t indicator_frames;
+};
+
 class Display
 {
 public:
@@ -40,6 +49,7 @@ public:
     void update();
     void reset();
     void show(animation_t *anim);
+    void showBootMessage();
 
     // Diagnostics: simple column control for hardware testing
     void clearColumns();
@@ -48,6 +58,11 @@ public:
     // Activity indicator: briefly overlay a pixel without disrupting animations
     void setIndicator(uint8_t col, uint8_t row, uint8_t frames);
     void clearIndicator();
+
+    // Save and restore the currently visible frame so temporary overlays like
+    // the shutdown animation do not clobber the user's display across wake.
+    void snapshotState(DisplayState &state) const;
+    void restoreState(const DisplayState &state);
 
 private:
     uint8_t active_col = 0;                                                 // Current column being multiplexed
@@ -67,6 +82,7 @@ private:
     };
     AnimationStatus status = RUNNING; // Current animation status
     animation_t *current_anim = nullptr;
+    bool current_anim_progmem = false;
 
     // Indicator overlay state
     bool indicator_active = false;

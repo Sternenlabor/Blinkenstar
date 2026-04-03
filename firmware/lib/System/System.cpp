@@ -15,12 +15,51 @@
 
 System rocket;
 
-static uint8_t animationBuffer[64];
-
 // Buttons are wired to Port C pins: PC3 (pin 26) and PC7 (pin 20)
 // Use direct port access to avoid any Arduino pin mapping ambiguity
 static inline bool button1_is_low() { return (PINC & _BV(PC3)) == 0; }
 static inline bool button2_is_low() { return (PINC & _BV(PC7)) == 0; }
+
+static uint8_t shutdownFrameCount()
+{
+    const uint8_t hdr0 = pgm_read_byte(shutdownPattern);
+    const uint8_t hdr1 = pgm_read_byte(shutdownPattern + 1);
+    const uint16_t data_length = ((hdr0 & 0x0F) << 8) | hdr1;
+
+    return data_length / 8;
+}
+
+static uint16_t shutdownFrameDelayMs()
+{
+    const uint8_t p2 = pgm_read_byte(shutdownPattern + 2);
+    const uint8_t update_threshold = 250 - ((p2 & 0x0F) << 4);
+    const uint32_t full_refresh_us = 8UL * 60UL;
+    const uint16_t delay_ms = (uint16_t)((((uint32_t)update_threshold * full_refresh_us) + 500UL) / 1000UL);
+
+    return delay_ms == 0 ? 1 : delay_ms;
+}
+
+static void showShutdownFrame(uint8_t frame)
+{
+    const uint16_t data_offset = (uint16_t)frame * 8U;
+
+    for (uint8_t col = 0; col < 8; ++col)
+    {
+        display.setColumn(col, (uint8_t)~pgm_read_byte(shutdownPattern + 4 + data_offset + col));
+    }
+}
+
+static void playShutdownAnimation()
+{
+    const uint8_t frame_count = shutdownFrameCount();
+    const uint16_t frame_delay_ms = shutdownFrameDelayMs();
+
+    for (uint8_t frame = 0; frame < frame_count; ++frame)
+    {
+        showShutdownFrame(frame);
+        delay(frame_delay_ms);
+    }
+}
 
 #if defined(ENABLE_MODEM) && defined(RX_ALWAYS_ON) && defined(NO_BOOT_MESSAGE) && !defined(DIAG_RX)
 static void showRxStandbyCue()
@@ -250,7 +289,7 @@ void System::loop()
         unsigned long now = millis();
         if (modem_enable_at_ms == 0)
         {
-            modem_enable_at_ms = now + 1000; // enable after ~1 s
+            modem_enable_at_ms = now + MODEM_BOOT_DELAY_MS;
         }
         if ((long)(now - modem_enable_at_ms) >= 0)
         {
@@ -338,49 +377,25 @@ void System::loop()
 void System::shutdown()
 {
     uint8_t i;
+    DisplayState preShutdownDisplayState;
 
     debuglog::println("SHUTDOWN");
 
-    // Load shutdown animation from PROGMEM
-    const uint8_t *pattern = shutdownPattern;
-    animation_t anim;
-
-    // Read headers
-    uint8_t hdr0 = pgm_read_byte(pattern);
-    uint8_t hdr1 = pgm_read_byte(pattern + 1);
-    anim.type = static_cast<AnimationType>(hdr0 >> 4);
-    anim.length = ((hdr0 & 0x0F) << 8) | hdr1;
-
-    // Parse parameters for frame-based animations
-    uint8_t p2 = pgm_read_byte(pattern + 2);
-    uint8_t p3 = pgm_read_byte(pattern + 3);
-    if (anim.type == AnimationType::FRAMES)
-    {
-        anim.speed = 250 - ((p2 & 0x0F) << 4);
-        anim.delay = p3 >> 4;
-    }
-
-    // Copy data to RAM buffer using Arduino min() macro
-    uint16_t len = min(anim.length, (uint16_t)sizeof(animationBuffer));
-    for (uint16_t i = 0; i < len; ++i)
-    {
-        animationBuffer[i] = pgm_read_byte(pattern + 4 + i);
-    }
-    anim.data = animationBuffer;
-
-    // Display shutdown animation
-    display.show(&anim);
+    display.snapshotState(preShutdownDisplayState);
+    // Freeze the active image as a static frame so the timer ISR no longer
+    // mutates the display while the manual shutdown animation is playing.
+    display.restoreState(preShutdownDisplayState);
+    playShutdownAnimation();
 
     // Wait until buttons are released
     while (button1_is_low() || button2_is_low())
     {
-        display.update();
+        delay(1);
     }
 
-    // and some more to debounce (~100ms) the buttons (and finish powerdown animation)
+    // Debounce the buttons after the animation has completed.
     for (i = 0; i < 100; i++)
     {
-        display.update();
         delay(1);
     }
 
@@ -407,17 +422,17 @@ void System::shutdown()
 
     // Re-enable display
     display.enable();
+    display.restoreState(preShutdownDisplayState);
 
     // Wait for buttons release post-wakeup
     while (button1_is_low() || button2_is_low())
     {
-        display.update();
+        delay(1);
     }
 
     // Debounce again
     for (i = 0; i < 100; i++)
     {
-        display.update();
         delay(1);
     }
 

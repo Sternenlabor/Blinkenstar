@@ -44,13 +44,33 @@ test('jp1debug is the RX diagnostic build with JP1 serial logging', () => {
         '-DRX_SLOW_ADC',
         '-DMODEM_ACTIVITY_THRESHOLD=30',
         '-DMODEM_NUMBER_OF_SAMPLES=4',
-        '-DMODEM_BITLEN_THRESHOLD=3',
-        '-DNO_BOOT_MESSAGE'
+        '-DMODEM_BITLEN_THRESHOLD=3'
     ]) {
         assert.match(release, new RegExp(flag.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
     }
 
+    assert.doesNotMatch(release, /-DMODEM_BOOT_DELAY_MS=/)
+    assert.doesNotMatch(release, /-DNO_BOOT_MESSAGE/)
     assert.match(jp1debug, /-DRX_NO_STORAGE/)
+    assert.match(jp1debug, /-DNO_BOOT_MESSAGE/)
+    assert.match(jp1debug, /-DRX_POLLING/)
+    assert.match(jp1debug, /-DMODEM_DISABLE_FRONTEND_BIAS/)
     assert.match(jp1debug, /-DJP1_DEBUG_SERIAL/)
+    assert.match(jp1debug, /-DJP1_DEBUG_SILENT/)
     assert.match(jp1debug, /-DJP1_DEBUG_TONE_DIAG/)
+})
+
+test('jp1debug keeps NO_BOOT_MESSAGE to preserve the low-RAM RX debug path', () => {
+    const jp1debug = getEnvSection('jp1debug')
+
+    assert.ok(jp1debug, 'expected env:jp1debug to exist')
+    assert.match(jp1debug, /-DNO_BOOT_MESSAGE/)
+})
+
+test('hwdiag keeps button diagnostics while enabling the boot-message renderer for isolation tests', () => {
+    const hwdiag = getEnvSection('hwdiag')
+
+    assert.ok(hwdiag, 'expected env:hwdiag to exist')
+    assert.match(hwdiag, /-DDIAG_BUTTONS/)
+    assert.match(hwdiag, /-DDIAG_BOOT_MESSAGE/)
 })

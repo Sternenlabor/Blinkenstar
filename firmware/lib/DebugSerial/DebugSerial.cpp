@@ -8,7 +8,7 @@
 #define JP1_DEBUG_BAUD 9600UL
 #endif
 
-#if defined(JP1_DEBUG_SERIAL)
+#if defined(JP1_DEBUG_SERIAL) && !defined(JP1_DEBUG_SILENT)
 namespace
 {
 constexpr uint8_t kTxBit = PC0;
@@ -45,7 +45,7 @@ inline void writeHexNibble(uint8_t nibble)
 
 void debuglog::begin()
 {
-#if defined(JP1_DEBUG_SERIAL)
+#if defined(JP1_DEBUG_SERIAL) && !defined(JP1_DEBUG_SILENT)
     // JP1 pin 2 is wired as a TX-only debug output for simple USB-UART capture during receiver bring-up.
     DDRC |= _BV(kTxBit);
     txHigh();
@@ -54,7 +54,7 @@ void debuglog::begin()
 
 void debuglog::write(uint8_t value)
 {
-#if defined(JP1_DEBUG_SERIAL)
+#if defined(JP1_DEBUG_SERIAL) && !defined(JP1_DEBUG_SILENT)
     const uint8_t oldSreg = SREG;
     cli();
 
@@ -106,7 +106,7 @@ void debuglog::println(const char *text)
 
 void debuglog::printHex8(uint8_t value)
 {
-#if defined(JP1_DEBUG_SERIAL)
+#if defined(JP1_DEBUG_SERIAL) && !defined(JP1_DEBUG_SILENT)
     writeHexNibble((uint8_t)(value >> 4));
     writeHexNibble((uint8_t)(value & 0x0F));
 #else
@@ -123,7 +123,7 @@ void debuglog::printlnHex8(uint8_t value)
 
 void debuglog::printHex16(uint16_t value)
 {
-#if defined(JP1_DEBUG_SERIAL)
+#if defined(JP1_DEBUG_SERIAL) && !defined(JP1_DEBUG_SILENT)
     writeHexNibble((uint8_t)((value >> 12) & 0x0F));
     writeHexNibble((uint8_t)((value >> 8) & 0x0F));
     writeHexNibble((uint8_t)((value >> 4) & 0x0F));

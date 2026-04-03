@@ -62,9 +62,11 @@ void Modem::processActivity_(uint16_t activity)
 
 void Modem::begin()
 {
+#ifndef MODEM_DISABLE_FRONTEND_BIAS
     // Bias the receive front-end while the modem is active.
     DDRA |= _BV(PA3);
     PORTA |= _BV(PA3);
+#endif
     slicer_.reset();
     activity_peak_ = 0;
     transition_count_ = 0;
@@ -95,8 +97,10 @@ void Modem::begin()
 
 void Modem::end()
 {
+#ifndef MODEM_DISABLE_FRONTEND_BIAS
     PORTA &= ~_BV(PA3);
     DDRA &= ~_BV(PA3);
+#endif
     ADCSRA &= ~_BV(ADEN);
 }
 

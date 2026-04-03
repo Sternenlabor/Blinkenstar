@@ -21,10 +21,20 @@ void setup()
 
 void loop()
 {
-    // Update columns based on button state
     bool b1 = btn_pc3_low();
     bool b2 = btn_pc7_low();
 
+    // Leave the boot-message renderer alone while idle so hwdiag can act as a
+    // modem-free comparison image for display startup problems.
+#ifdef DIAG_BOOT_MESSAGE
+    if (!b1 && !b2)
+    {
+        delay(2);
+        return;
+    }
+#endif
+
+    // Update columns based on button state
     display.clearColumns();
     if (b1)
     {
