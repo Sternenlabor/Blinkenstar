@@ -38,6 +38,8 @@ struct DisplayState
     uint8_t indicator_row;
     uint8_t indicator_frames;
     bool boot_message_active;
+    bool animation_active;
+    animation_t animation;
 };
 
 class Display
@@ -49,7 +51,7 @@ public:
     void multiplex();
     void update();
     void reset();
-    void show(animation_t *anim);
+    void show(const animation_t *anim);
     void showBootMessage();
 
     // Diagnostics: simple column control for hardware testing
@@ -84,6 +86,7 @@ private:
     };
     AnimationStatus status = RUNNING; // Current animation status
     animation_t *current_anim = nullptr;
+    animation_t current_anim_copy = {};
     bool current_anim_progmem = false;
 
     // Indicator overlay state

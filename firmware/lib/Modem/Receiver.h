@@ -29,6 +29,9 @@ public:
     uint16_t getDiagLength() const;
     bool isShowingHex() const;
     bool isShowingRaw() const;
+#if !defined(RX_NO_STORAGE)
+    bool showStoredPattern(uint8_t idx = 0);
+#endif
 
 private:
     enum TransmissionControl : uint8_t {
@@ -63,6 +66,7 @@ private:
     uint16_t remaining_ = 0;
     // Keep diagnostics intentionally small; the ATtiny88 only has 512 bytes of SRAM.
     bool frame_complete_ = false;
+    bool frame_payload_complete_ = false;
     uint8_t diag_last8_[8] = {0};
     uint8_t diag_idx_ = 0;
     uint8_t diag_start8_[8] = {0};

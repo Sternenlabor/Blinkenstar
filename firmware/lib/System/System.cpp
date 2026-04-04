@@ -1,4 +1,5 @@
 #include "System.h"
+#include "DiagLog.h"
 #include "Display.h"
 #include "DebugSerial.h"
 #include "static_patterns.h"
@@ -156,6 +157,9 @@ static void printToneSummary()
 
 void System::initialize()
 {
+    const uint8_t reset_cause = MCUSR;
+    MCUSR = 0;
+
     // Disable watchdog via Arduino API
     wdt_disable();
 
@@ -166,19 +170,30 @@ void System::initialize()
     debuglog::begin();
     debuglog::println("BOOT");
     debuglog::print("MCUSR=0x");
-    debuglog::printlnHex8(MCUSR);
+    debuglog::printlnHex8(reset_cause);
+    diaglog::reset(reset_cause);
+#ifdef JP1_DEBUG_SKIP_MODEM
+    debuglog::println("MODEM SKIP");
+#endif
 
     // Initialize display
     display.enable();
+#if defined(ENABLE_MODEM) && !defined(RX_NO_STORAGE) && !defined(DIAG_RX) && !defined(NO_STORED_PATTERN_BOOT_RESTORE)
+    modemReceiver.showStoredPattern(0);
+#endif
 #if defined(ENABLE_MODEM) && defined(RX_ALWAYS_ON) && defined(NO_BOOT_MESSAGE) && !defined(DIAG_RX)
     showRxStandbyCue();
+#endif
+#ifdef JP1_DEBUG_HEADLESS_RX
+    // Diagnostic mode: blank the matrix refresh entirely so receive bring-up
+    // is not masked by LED-matrix current draw on marginal power sources.
+    display.disable();
 #endif
 #ifdef ENABLE_MODEM
 #ifdef RX_ALWAYS_ON
   #ifdef DIAG_RX
     // Diagnostic: show reset cause + heartbeat first; start modem after delay
-    uint8_t mcusr = MCUSR;
-    MCUSR = 0;
+    uint8_t mcusr = reset_cause;
     diag_reset_cause = mcusr;
     diag_boot_phase = true;
     diag_boot_end_ms = millis() + 1500;
@@ -284,6 +299,7 @@ void System::loop()
 #ifdef RX_ALWAYS_ON
   #ifndef DIAG_RX
     // Give the display and analog front-end a short quiet period before enabling receive mode.
+#ifndef JP1_DEBUG_SKIP_MODEM
     if (!modem_enabled)
     {
         unsigned long now = millis();
@@ -298,6 +314,7 @@ void System::loop()
             debuglog::println("MODEM ON");
         }
     }
+#endif
   #else
     // DIAG_RX: show reset text; start modem after delay, no heartbeat
     unsigned long now = millis();

@@ -149,6 +149,11 @@ void Display::snapshotState(DisplayState &state) const
     state.indicator_row = indicator_row;
     state.indicator_frames = indicator_frames;
     state.boot_message_active = current_anim == nullptr && current_anim_progmem;
+    state.animation_active = current_anim != nullptr;
+    if (state.animation_active)
+    {
+        state.animation = current_anim_copy;
+    }
 }
 
 void Display::freezeState(const DisplayState &state)
@@ -189,13 +194,24 @@ void Display::restoreState(const DisplayState &state)
         return;
     }
 
+    if (state.animation_active)
+    {
+        show(&state.animation);
+        indicator_active = state.indicator_active;
+        indicator_col = state.indicator_col;
+        indicator_row = state.indicator_row;
+        indicator_frames = state.indicator_frames;
+        return;
+    }
+
     freezeState(state);
 }
 
 // Start a new animation
-void Display::show(animation_t *anim)
+void Display::show(const animation_t *anim)
 {
-    current_anim = anim;
+    current_anim_copy = *anim;
+    current_anim = &current_anim_copy;
     current_anim_progmem = false;
     reset();
     update_threshold = current_anim->speed;

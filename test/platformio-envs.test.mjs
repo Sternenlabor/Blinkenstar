@@ -33,22 +33,21 @@ test('platformio.ini exposes only the consolidated build environments', () => {
 test('jp1debug is the RX diagnostic build with JP1 serial logging', () => {
     const release = getEnvSection('release')
     const jp1debug = getEnvSection('jp1debug')
+    const debugwire = getEnvSection('debugwire')
 
     assert.ok(release, 'expected env:release to exist')
     assert.ok(jp1debug, 'expected env:jp1debug to exist')
+    assert.ok(debugwire, 'expected env:debugwire to exist')
     assert.match(jp1debug, /extends = env:release/)
 
-    for (const flag of [
-        '-DENABLE_MODEM',
-        '-DRX_ALWAYS_ON',
-        '-DRX_SLOW_ADC',
-        '-DMODEM_ACTIVITY_THRESHOLD=30',
-        '-DMODEM_NUMBER_OF_SAMPLES=4',
-        '-DMODEM_BITLEN_THRESHOLD=3'
-    ]) {
+    for (const flag of ['-DENABLE_MODEM', '-DRX_ALWAYS_ON', '-DMODEM_ADC_CHANNEL=6']) {
         assert.match(release, new RegExp(flag.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
     }
 
+    assert.doesNotMatch(release, /-DRX_SLOW_ADC/)
+    assert.doesNotMatch(release, /-DMODEM_ACTIVITY_THRESHOLD=/)
+    assert.doesNotMatch(release, /-DMODEM_NUMBER_OF_SAMPLES=/)
+    assert.doesNotMatch(release, /-DMODEM_BITLEN_THRESHOLD=/)
     assert.doesNotMatch(release, /-DMODEM_BOOT_DELAY_MS=/)
     assert.doesNotMatch(release, /-DNO_BOOT_MESSAGE/)
     assert.match(jp1debug, /-DRX_NO_STORAGE/)
@@ -56,8 +55,11 @@ test('jp1debug is the RX diagnostic build with JP1 serial logging', () => {
     assert.match(jp1debug, /-DRX_POLLING/)
     assert.match(jp1debug, /-DMODEM_DISABLE_FRONTEND_BIAS/)
     assert.match(jp1debug, /-DJP1_DEBUG_SERIAL/)
-    assert.match(jp1debug, /-DJP1_DEBUG_SILENT/)
-    assert.match(jp1debug, /-DJP1_DEBUG_TONE_DIAG/)
+    assert.match(jp1debug, /-DJP1_DEBUG_NO_HEARTBEAT/)
+    assert.match(jp1debug, /-DJP1_DEBUG_RX_EVENTS/)
+    assert.match(jp1debug, /-DJP1_DEBUG_HEADLESS_RX/)
+    assert.doesNotMatch(jp1debug, /-DJP1_DEBUG_SILENT/)
+    assert.match(debugwire, /-DNO_STORED_PATTERN_BOOT_RESTORE/)
 })
 
 test('jp1debug keeps NO_BOOT_MESSAGE to preserve the low-RAM RX debug path', () => {

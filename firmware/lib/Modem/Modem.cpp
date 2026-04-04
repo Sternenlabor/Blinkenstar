@@ -7,6 +7,34 @@
 
 Modem g_modem;
 
+uint8_t Modem::adcDigitalInputDisableMask_()
+{
+    switch (MODEM_ADC_CHANNEL & 0x07)
+    {
+        case 0:
+            return _BV(ADC0D);
+        case 1:
+            return _BV(ADC1D);
+        case 2:
+            return _BV(ADC2D);
+        case 3:
+            return _BV(ADC3D);
+        case 4:
+            return _BV(ADC4D);
+        case 5:
+            return _BV(ADC5D);
+        case 6:
+            return _BV(ADC6D);
+        default:
+            return _BV(ADC7D);
+    }
+}
+
+void Modem::startConversion_()
+{
+    ADCSRA |= _BV(ADSC);
+}
+
 void Modem::processActivity_(uint16_t activity)
 {
     last_activity_ = activity;
@@ -15,15 +43,15 @@ void Modem::processActivity_(uint16_t activity)
         activity_peak_ = activity;
     }
 
-    // The slicer reduces the analog activity envelope to HIGH/LOW/IDLE so the decoder can work on transitions only.
-    decltype(slicer_)::State slicer_state = slicer_.update(activity);
+    // Keep the adaptive envelope tracker alive for diagnostics, but use the
+    // original threshold demodulator for actual bit classification.
+    slicer_.update(activity);
 
     if (bitlen_ < 100)
         bitlen_++;
 
-    if ((slicer_state == decltype(slicer_)::STATE_NONE) && (bitlen_ > (BITLEN_THRESHOLD << 2)))
+    if ((activity < ACTIVITY_THRESHOLD) && (bitlen_ > (BITLEN_THRESHOLD << 2)))
     {
-        // idle
         prev_freq_ = FREQ_NONE;
         bitcount_ = 0;
         byte_ = 0;
@@ -31,10 +59,7 @@ void Modem::processActivity_(uint16_t activity)
         return;
     }
 
-    if (slicer_state == decltype(slicer_)::STATE_NONE)
-        return;
-
-    freq_ = (slicer_state == decltype(slicer_)::STATE_HIGH) ? FREQ_HIGH : FREQ_LOW;
+    freq_ = (activity >= ACTIVITY_THRESHOLD) ? FREQ_HIGH : FREQ_LOW;
     if (freq_ != prev_freq_)
     {
         if (transition_count_ != 0xFF)
@@ -73,26 +98,44 @@ void Modem::begin()
 
     // Configure ADC: AVcc reference, selectable input channel
     ADMUX = _BV(REFS0) | (MODEM_ADC_CHANNEL & 0x0F);
-    // Enable ADC, auto trigger (free running), with interrupt
+    // Keep the active ADC pin in analog mode only while the modem is running.
+    DIDR0 |= adcDigitalInputDisableMask_();
+    // Enable ADC with either free-running or manual single-shot restart.
 #ifdef RX_POLLING
     // Polling: no ADC interrupt
   #ifdef RX_SLOW_ADC
     // Prescaler 128
+    #ifdef MODEM_SINGLE_SHOT_ADC
+    ADCSRA = _BV(ADEN) | _BV(ADPS2) | _BV(ADPS1) | _BV(ADPS0);
+    #else
     ADCSRA = _BV(ADEN) | _BV(ADPS2) | _BV(ADPS1) | _BV(ADPS0) | _BV(ADATE);
+    #endif
   #else
     // Prescaler 32
+    #ifdef MODEM_SINGLE_SHOT_ADC
+    ADCSRA = _BV(ADEN) | _BV(ADPS2) | _BV(ADPS0);
+    #else
     ADCSRA = _BV(ADEN) | _BV(ADPS2) | _BV(ADPS0) | _BV(ADATE);
+    #endif
   #endif
 #else
   #ifdef RX_SLOW_ADC
     // Prescaler 128 (lower ISR rate) for coexistence with display
+    #ifdef MODEM_SINGLE_SHOT_ADC
+    ADCSRA = _BV(ADEN) | _BV(ADIE) | _BV(ADPS2) | _BV(ADPS1) | _BV(ADPS0);
+    #else
     ADCSRA = _BV(ADEN) | _BV(ADIE) | _BV(ADPS2) | _BV(ADPS1) | _BV(ADPS0) | _BV(ADATE);
+    #endif
   #else
     // Prescaler 32 (legacy-like timing)
+    #ifdef MODEM_SINGLE_SHOT_ADC
+    ADCSRA = _BV(ADEN) | _BV(ADIE) | _BV(ADPS2) | _BV(ADPS0);
+    #else
     ADCSRA = _BV(ADEN) | _BV(ADIE) | _BV(ADPS2) | _BV(ADPS0) | _BV(ADATE);
+    #endif
   #endif
 #endif
-    ADCSRA |= _BV(ADSC);
+    startConversion_();
 }
 
 void Modem::end()
@@ -102,6 +145,7 @@ void Modem::end()
     DDRA &= ~_BV(PA3);
 #endif
     ADCSRA &= ~_BV(ADEN);
+    DIDR0 &= ~adcDigitalInputDisableMask_();
 }
 
 uint8_t Modem::available() const
@@ -127,6 +171,9 @@ void Modem::onAdcIsr()
 {
     // Activity is the accumulated absolute delta across a small sample window rather than raw ADC level.
     uint16_t sample = ADC;
+#ifdef MODEM_SINGLE_SHOT_ADC
+    startConversion_();
+#endif
     uint16_t delta = (sample > sample_prev_) ? (sample - sample_prev_) : (sample_prev_ - sample);
     sample_prev_ = sample;
     sample_accu_ += delta;
@@ -154,11 +201,16 @@ void Modem::poll(uint8_t budget)
         ADCSRA |= _BV(ADIF);
         // Process one sample (same as ISR)
         uint16_t sample = ADC;
+#ifdef MODEM_SINGLE_SHOT_ADC
+        startConversion_();
+#endif
         uint16_t delta = (sample > sample_prev_) ? (sample - sample_prev_) : (sample_prev_ - sample);
         sample_prev_ = sample;
         sample_accu_ += delta;
         if (++sample_cnt_ < NUMBER_OF_SAMPLES)
+        {
             continue;
+        }
 
         uint16_t activity = sample_accu_;
         sample_cnt_ = 0;

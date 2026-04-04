@@ -25,7 +25,7 @@ JP1 serial wiring for `jp1debug`:
 - `JP1 pin 2` (`E1`, `PC0`) is debug TX
 - `JP1 pin 4` is GND
 - Connect a USB-UART adapter `RX` to `JP1 pin 2`
-- The `release` build shows the normal scrolling boot/storage text again while keeping the RX/store path enabled
+- The `release` build shows the normal scrolling boot/storage text again while keeping the RX/store path enabled and now uses the legacy modem timing from the original firmware
 - The `jp1debug` build still suppresses the scrolling boot text to keep more SRAM available, uses polling RX and leaves the PA3 front-end bias disabled for bench stability
 - `JP1_DEBUG_SILENT` can be enabled in `jp1debug` to keep the debug call sites compiled while muting the bit-banged JP1 TX path during bench isolation
 

@@ -114,6 +114,8 @@ private:
     uint8_t recent_idx_ = 0;
     uint8_t recent_count_ = 0;
 
+    static uint8_t adcDigitalInputDisableMask_();
+    static void startConversion_();
     void processActivity_(uint16_t activity);
 };
 

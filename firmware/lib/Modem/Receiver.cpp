@@ -1,11 +1,75 @@
 #include "Receiver.h"
 #include "DebugSerial.h"
 #include "Display.h"
+#include "DiagLog.h"
 #include "static_patterns.h"
 
 ModemReceiver modemReceiver;
 
 static bool storage_ready = false;
+#if defined(JP1_DEBUG_SERIAL) && defined(JP1_DEBUG_RX_EVENTS)
+namespace
+{
+inline void logRxEvent(const char *event)
+{
+    debuglog::println(event);
+}
+
+inline void logRxLength(uint16_t length)
+{
+    debuglog::print("L");
+    debuglog::printHex16(length);
+    debuglog::write('\r');
+    debuglog::write('\n');
+}
+} // namespace
+#endif
+
+#if !defined(RX_NO_STORAGE)
+static uint8_t display_payload_buf[132];
+
+static bool showPayloadBuffer(uint8_t *payload)
+{
+    animation_t anim;
+    uint8_t hdr0 = payload[0];
+    uint8_t hdr1 = payload[1];
+    anim.type = static_cast<AnimationType>(hdr0 >> 4);
+    if (anim.type != AnimationType::TEXT && anim.type != AnimationType::FRAMES)
+    {
+        return false;
+    }
+
+    anim.length = ((hdr0 & 0x0F) << 8) | hdr1;
+    if (anim.length == 0)
+    {
+        return false;
+    }
+    if (anim.length > 128)
+    {
+        anim.length = 128;
+    }
+
+    uint8_t p2 = payload[2];
+    uint8_t p3 = payload[3];
+    if (anim.type == AnimationType::TEXT)
+    {
+        anim.speed = 250 - (p2 & 0xF0);
+        anim.delay = (p2 & 0x0F);
+        anim.direction = (p3 >> 4);
+        anim.repeat = (p3 & 0x0F);
+    }
+    else
+    {
+        anim.speed = 250 - ((p2 & 0x0F) << 4);
+        anim.delay = (p3 >> 4);
+        anim.direction = 0;
+        anim.repeat = (p3 & 0x0F);
+    }
+    anim.data = payload + 4;
+    display.show(&anim);
+    return true;
+}
+#endif
 #ifdef DIAG_RX
 static uint8_t diag_hex[40];
 static uint8_t diag_hex_len = 0;
@@ -23,8 +87,10 @@ void ModemReceiver::begin()
     fecModem.begin();
     debuglog::println("RX BEGIN");
     state_ = START1;
+    diaglog::setState(static_cast<uint8_t>(state_));
     rx_pos_ = 0;
     remaining_ = 0;
+    frame_payload_complete_ = false;
     diag_start_count_ = 0;
     diag_start_capture_ = false;
     diag_events_ = 0;
@@ -43,6 +109,20 @@ void ModemReceiver::end()
     fecModem.end();
     debuglog::println("RX END");
 }
+
+#if !defined(RX_NO_STORAGE)
+bool ModemReceiver::showStoredPattern(uint8_t idx)
+{
+    storage.enable();
+    if (!storage.hasData() || idx >= storage.numPatterns())
+    {
+        return false;
+    }
+
+    storage.load(idx, display_payload_buf);
+    return showPayloadBuffer(display_payload_buf);
+}
+#endif
 
 void ModemReceiver::process()
 {
@@ -112,14 +192,21 @@ void ModemReceiver::process()
             // Accept either 0xA5,0x5A (legacy v2) or 0x99,0x99 (alternate)
             if (b == BYTE_START1 || b == BYTE_START_ALT)
                 state_ = START2;
+            diaglog::setState(static_cast<uint8_t>(state_));
             break;
         case START2:
             if (b == BYTE_START2 || b == BYTE_START_ALT)
             {
                 state_ = NEXT_BLOCK;
+                diaglog::setState(static_cast<uint8_t>(state_));
+                frame_payload_complete_ = false;
+                diaglog::markStart();
                 diag_events_ |= DIAG_EVENT_START;
                 diag_start_count_ = 0;
                 diag_start_capture_ = true;
+#if defined(JP1_DEBUG_SERIAL) && defined(JP1_DEBUG_RX_EVENTS)
+                logRxEvent("S");
+#endif
                 // In diagnostics, no large buffering to conserve SRAM
 #ifndef RX_NO_STORAGE
                 if (!storage_ready)
@@ -144,6 +231,7 @@ void ModemReceiver::process()
             else
             {
                 state_ = (b == BYTE_START1) ? START2 : START1;
+                diaglog::setState(static_cast<uint8_t>(state_));
             }
             break;
         case NEXT_BLOCK:
@@ -151,46 +239,47 @@ void ModemReceiver::process()
             if (b == BYTE_PATTERN1 || b == BYTE_PATTERN_ALT)
             {
                 state_ = PATTERN2;
+                diaglog::setState(static_cast<uint8_t>(state_));
+                diaglog::markPattern1();
                 diag_events_ |= DIAG_EVENT_PATTERN1;
+#if defined(JP1_DEBUG_SERIAL) && defined(JP1_DEBUG_RX_EVENTS)
+                logRxEvent("1");
+#endif
             }
             else if (b == BYTE_END)
             {
+                if (!frame_payload_complete_)
+                {
+                    state_ = START1;
+                    diaglog::setState(static_cast<uint8_t>(state_));
+                    rx_pos_ = 0;
+                    remaining_ = 0;
+                    fecModem.clear();
+                    break;
+                }
+                diaglog::markEnd();
                 diag_events_ |= DIAG_EVENT_END;
+#if defined(JP1_DEBUG_SERIAL) && defined(JP1_DEBUG_RX_EVENTS)
+                logRxEvent("E");
+#endif
                 // End of frame: either store or show directly (diagnostic)
 #if !defined(RX_NO_STORAGE) && !defined(RX_BUFFERED_STORE)
                 storage.sync();
                 state_ = START1;
+                diaglog::setState(static_cast<uint8_t>(state_));
+                frame_payload_complete_ = false;
                 fecModem.clear();
                 frame_complete_ = true;
+                diaglog::markFrame();
                 diag_events_ |= DIAG_EVENT_FRAME;
+#if defined(JP1_DEBUG_SERIAL) && defined(JP1_DEBUG_RX_EVENTS)
+                logRxEvent("F");
+#endif
 
                 // Reload the just-written payload so the user sees exactly what landed in EEPROM.
-                static uint8_t disp_buf[132];
-                storage.load(0, disp_buf);
-
-                animation_t anim;
-                uint8_t hdr0 = disp_buf[0];
-                uint8_t hdr1 = disp_buf[1];
-                anim.type = static_cast<AnimationType>(hdr0 >> 4);
-                anim.length = ((hdr0 & 0x0F) << 8) | hdr1;
-                uint8_t p2 = disp_buf[2];
-                uint8_t p3 = disp_buf[3];
-                if (anim.type == AnimationType::TEXT)
-                {
-                    anim.speed = 250 - (p2 & 0xF0);
-                    anim.delay = (p2 & 0x0F);
-                    anim.direction = (p3 >> 4);
-                    anim.repeat = (p3 & 0x0F);
-                }
-                else
-                {
-                    anim.speed = 250 - ((p2 & 0x0F) << 4);
-                    anim.delay = (p3 >> 4);
-                    anim.direction = 0;
-                    anim.repeat = (p3 & 0x0F);
-                }
-                anim.data = disp_buf + 4;
-                display.show(&anim);
+                storage.load(0, display_payload_buf);
+                bool shown = showPayloadBuffer(display_payload_buf);
+                diaglog::captureLoaded(display_payload_buf, storage.numPatterns(), shown);
 #elif defined(RX_BUFFERED_STORE)
                 // Flush buffered pages to EEPROM now
                 if (!storage_ready)
@@ -209,42 +298,31 @@ void ModemReceiver::process()
                 }
                 storage.sync();
                 state_ = START1;
+                diaglog::setState(static_cast<uint8_t>(state_));
+                frame_payload_complete_ = false;
                 fecModem.clear();
                 frame_complete_ = true;
+                diaglog::markFrame();
                 diag_events_ |= DIAG_EVENT_FRAME;
+#if defined(JP1_DEBUG_SERIAL) && defined(JP1_DEBUG_RX_EVENTS)
+                logRxEvent("F");
+#endif
 
                 // Reload the just-written payload so the display path matches the persisted bytes.
-                static uint8_t disp_buf[132];
-                storage.load(0, disp_buf);
-
-                animation_t anim;
-                uint8_t hdr0 = disp_buf[0];
-                uint8_t hdr1 = disp_buf[1];
-                anim.type = static_cast<AnimationType>(hdr0 >> 4);
-                anim.length = ((hdr0 & 0x0F) << 8) | hdr1;
-                uint8_t p2 = disp_buf[2];
-                uint8_t p3 = disp_buf[3];
-                if (anim.type == AnimationType::TEXT)
-                {
-                    anim.speed = 250 - (p2 & 0xF0);
-                    anim.delay = (p2 & 0x0F);
-                    anim.direction = (p3 >> 4);
-                    anim.repeat = (p3 & 0x0F);
-                }
-                else
-                {
-                    anim.speed = 250 - ((p2 & 0x0F) << 4);
-                    anim.delay = (p3 >> 4);
-                    anim.direction = 0;
-                    anim.repeat = (p3 & 0x0F);
-                }
-                anim.data = disp_buf + 4;
-                display.show(&anim);
+                storage.load(0, display_payload_buf);
+                bool shown = showPayloadBuffer(display_payload_buf);
+                diaglog::captureLoaded(display_payload_buf, storage.numPatterns(), shown);
 #else
                 state_ = START1;
+                diaglog::setState(static_cast<uint8_t>(state_));
+                frame_payload_complete_ = false;
                 fecModem.clear();
                 frame_complete_ = true;
+                diaglog::markFrame();
                 diag_events_ |= DIAG_EVENT_FRAME;
+#if defined(JP1_DEBUG_SERIAL) && defined(JP1_DEBUG_RX_EVENTS)
+                logRxEvent("F");
+#endif
 #ifdef DIAG_RX
                 // If we captured some bytes but didn't reach 12 yet, show what we have
                 if (!diag_showing_hex && diag_capture_count > 0)
@@ -265,46 +343,68 @@ void ModemReceiver::process()
             }
             else
             {
-                // Ignore stray bytes, keep waiting for PATTERN or END
-                state_ = NEXT_BLOCK;
+                // Resynchronize fully after a broken post-start marker so the next real frame can reacquire START1.
+                state_ = START1;
+                diaglog::setState(static_cast<uint8_t>(state_));
             }
             break;
         case PATTERN2:
             if (b == BYTE_PATTERN2 || b == BYTE_PATTERN_ALT)
             {
                 state_ = HEADER1;
+                diaglog::setState(static_cast<uint8_t>(state_));
+                diaglog::markPattern2();
                 rx_pos_ = 0;
                 diag_events_ |= DIAG_EVENT_PATTERN2;
+#if defined(JP1_DEBUG_SERIAL) && defined(JP1_DEBUG_RX_EVENTS)
+                logRxEvent("2");
+#endif
             }
             else
             {
-                // Try again: wait for NEXT_BLOCK marker sequence
-                state_ = NEXT_BLOCK;
+                // A broken PATTERN marker means we lost framing, so restart from START1 like the original firmware.
+                state_ = START1;
+                diaglog::setState(static_cast<uint8_t>(state_));
             }
             break;
         case HEADER1:
             state_ = HEADER2;
+            diaglog::setState(static_cast<uint8_t>(state_));
             // Header uses 12 bits of payload length split across the first two bytes.
             remaining_ = (b & 0x0F) << 8;
             break;
         case HEADER2:
             state_ = META1;
+            diaglog::setState(static_cast<uint8_t>(state_));
             remaining_ += b;
             diag_length_ = remaining_;
+            diaglog::setLength(remaining_);
+#if defined(JP1_DEBUG_SERIAL) && defined(JP1_DEBUG_RX_EVENTS)
+            logRxLength(remaining_);
+#endif
             break;
         case META1:
             state_ = META2;
+            diaglog::setState(static_cast<uint8_t>(state_));
             break;
         case META2:
             state_ = DATA_FIRSTBLOCK;
+            diaglog::setState(static_cast<uint8_t>(state_));
             if (remaining_ == 0)
+            {
                 state_ = NEXT_BLOCK;
+                diaglog::setState(static_cast<uint8_t>(state_));
+            }
             break;
         case DATA_FIRSTBLOCK:
             if (remaining_ == 0)
             {
                 state_ = NEXT_BLOCK;
+                diaglog::setState(static_cast<uint8_t>(state_));
+                frame_payload_complete_ = true;
 #if !defined(RX_NO_STORAGE) && !defined(RX_BUFFERED_STORE)
+                diaglog::captureFirstPage(rx_buf_);
+                diaglog::markSave();
                 storage.save(rx_buf_);
                 display.setIndicator(0, 0, 2);
                 display.setIndicator(0, 7, 2);
@@ -326,8 +426,11 @@ void ModemReceiver::process()
             else if (rx_pos_ == 32)
             {
                 state_ = DATA;
+                diaglog::setState(static_cast<uint8_t>(state_));
                 rx_pos_ = 0;
 #if !defined(RX_NO_STORAGE) && !defined(RX_BUFFERED_STORE)
+                diaglog::captureFirstPage(rx_buf_);
+                diaglog::markSave();
                 storage.save(rx_buf_);
                 display.setIndicator(1, 0, 2);
                 display.setIndicator(1, 7, 2);
@@ -346,7 +449,10 @@ void ModemReceiver::process()
             if (remaining_ == 0)
             {
                 state_ = NEXT_BLOCK;
+                diaglog::setState(static_cast<uint8_t>(state_));
+                frame_payload_complete_ = true;
 #if !defined(RX_NO_STORAGE) && !defined(RX_BUFFERED_STORE)
+                diaglog::markAppend();
                 storage.append(rx_buf_);
                 display.setIndicator(2, 0, 2);
                 display.setIndicator(2, 7, 2);
@@ -356,6 +462,7 @@ void ModemReceiver::process()
             {
                 rx_pos_ = 0;
 #if !defined(RX_NO_STORAGE) && !defined(RX_BUFFERED_STORE)
+                diaglog::markAppend();
                 storage.append(rx_buf_);
                 display.setIndicator(3, 0, 2);
                 display.setIndicator(3, 7, 2);
@@ -372,6 +479,7 @@ void ModemReceiver::process()
             break;
         default:
             state_ = START1;
+            diaglog::setState(static_cast<uint8_t>(state_));
             break;
         }
     }
