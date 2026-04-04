@@ -148,9 +148,10 @@ void Display::snapshotState(DisplayState &state) const
     state.indicator_col = indicator_col;
     state.indicator_row = indicator_row;
     state.indicator_frames = indicator_frames;
+    state.boot_message_active = current_anim == nullptr && current_anim_progmem;
 }
 
-void Display::restoreState(const DisplayState &state)
+void Display::freezeState(const DisplayState &state)
 {
     for (uint8_t i = 0; i < 8; ++i)
     {
@@ -174,6 +175,21 @@ void Display::restoreState(const DisplayState &state)
     char_pos = -1;
     repeat_cnt = 0;
     status = RUNNING;
+}
+
+void Display::restoreState(const DisplayState &state)
+{
+    if (state.boot_message_active)
+    {
+        showBootMessage();
+        indicator_active = state.indicator_active;
+        indicator_col = state.indicator_col;
+        indicator_row = state.indicator_row;
+        indicator_frames = state.indicator_frames;
+        return;
+    }
+
+    freezeState(state);
 }
 
 // Start a new animation

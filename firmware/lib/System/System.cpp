@@ -384,7 +384,7 @@ void System::shutdown()
     display.snapshotState(preShutdownDisplayState);
     // Freeze the active image as a static frame so the timer ISR no longer
     // mutates the display while the manual shutdown animation is playing.
-    display.restoreState(preShutdownDisplayState);
+    display.freezeState(preShutdownDisplayState);
     playShutdownAnimation();
 
     // Wait until buttons are released

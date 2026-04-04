@@ -37,6 +37,7 @@ struct DisplayState
     uint8_t indicator_col;
     uint8_t indicator_row;
     uint8_t indicator_frames;
+    bool boot_message_active;
 };
 
 class Display
@@ -62,6 +63,7 @@ public:
     // Save and restore the currently visible frame so temporary overlays like
     // the shutdown animation do not clobber the user's display across wake.
     void snapshotState(DisplayState &state) const;
+    void freezeState(const DisplayState &state);
     void restoreState(const DisplayState &state);
 
 private:

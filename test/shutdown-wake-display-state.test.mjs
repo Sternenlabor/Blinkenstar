@@ -18,18 +18,22 @@ test('shutdown wake path preserves the active display state across the temporary
     assert.match(displayHeader, /void restoreState\(const DisplayState &state\);/)
 
     const snapshotCall = 'display.snapshotState(preShutdownDisplayState);'
+    const freezeCall = 'display.freezeState(preShutdownDisplayState);'
     const showCall = 'playShutdownAnimation();'
     const enableCall = 'display.enable();'
     const restoreCall = 'display.restoreState(preShutdownDisplayState);'
 
     const snapshotIndex = systemSource.indexOf(snapshotCall)
+    const freezeIndex = systemSource.indexOf(freezeCall)
     const showIndex = systemSource.indexOf(showCall)
     const enableIndex = systemSource.indexOf(enableCall)
     const restoreIndex = systemSource.indexOf(restoreCall)
 
     assert.notEqual(snapshotIndex, -1, 'expected shutdown() to snapshot the active display state')
+    assert.notEqual(freezeIndex, -1, 'expected shutdown() to freeze the saved frame before the manual shutdown animation')
     assert.notEqual(showIndex, -1, 'expected shutdown animation to be shown')
-    assert.ok(snapshotIndex < showIndex, 'expected display state snapshot before shutdown animation starts')
+    assert.ok(snapshotIndex < freezeIndex, 'expected display state snapshot before freezing the display')
+    assert.ok(freezeIndex < showIndex, 'expected frozen saved frame before shutdown animation starts')
 
     assert.notEqual(enableIndex, -1, 'expected wake path to re-enable the display')
     assert.notEqual(restoreIndex, -1, 'expected wake path to restore the pre-shutdown display state')

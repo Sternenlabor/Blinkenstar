@@ -27,3 +27,13 @@ test('boot message renderer can be enabled explicitly inside hardware diagnostic
 
     assert.match(displaySource, /#if \(!defined\(DIAG_BUTTONS\) \|\| defined\(DIAG_BOOT_MESSAGE\)\) && !defined\(NO_BOOT_MESSAGE\)/)
 })
+
+test('restoring a saved boot-message state resumes the boot message instead of freezing its last frame', () => {
+    const displayHeader = fs.readFileSync(displayHeaderPath, 'utf8')
+    const displaySource = fs.readFileSync(displaySourcePath, 'utf8')
+
+    assert.match(displayHeader, /bool boot_message_active;/)
+    assert.match(displayHeader, /void freezeState\(const DisplayState &state\);/)
+    assert.match(displaySource, /state\.boot_message_active = current_anim == nullptr && current_anim_progmem;/)
+    assert.match(displaySource, /if \(state\.boot_message_active\)\s*\{\s*showBootMessage\(\);/s)
+})
