@@ -13,10 +13,10 @@ test('receiver fully resynchronizes after invalid marker bytes like the upstream
 
     assert.match(
         receiverSource,
-        /case NEXT_BLOCK:[\s\S]*?else\s*\{\s*\/\/ Resynchronize fully after a broken post-start marker so the next real frame can reacquire START1\.\s*state_ = START1;\s*\}/
+        /case NEXT_BLOCK:[\s\S]*?else\s*\{\s*\/\/ Resynchronize fully after a broken post-start marker so the next real frame can reacquire START1\.\s*state_ = START1;[\s\S]*?\}/
     )
     assert.match(
         receiverSource,
-        /case PATTERN2:[\s\S]*?else\s*\{\s*\/\/ A broken PATTERN marker means we lost framing, so restart from START1 like the original firmware\.\s*state_ = START1;\s*\}/
+        /case PATTERN2:[\s\S]*?else\s*\{\s*\/\/ A broken PATTERN marker means we lost framing, so restart from START1 like the original firmware\.\s*state_ = START1;[\s\S]*?\}/
     )
 })

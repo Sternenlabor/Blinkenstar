@@ -34,7 +34,8 @@ static uint16_t shutdownFrameDelayMs()
 {
     const uint8_t p2 = pgm_read_byte(shutdownPattern + 2);
     const uint8_t update_threshold = 250 - ((p2 & 0x0F) << 4);
-    const uint32_t full_refresh_us = 8UL * 60UL;
+    // Match the upstream display cadence: one column every 256 us.
+    const uint32_t full_refresh_us = 8UL * 256UL;
     const uint16_t delay_ms = (uint16_t)((((uint32_t)update_threshold * full_refresh_us) + 500UL) / 1000UL);
 
     return delay_ms == 0 ? 1 : delay_ms;

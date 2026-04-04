@@ -8,6 +8,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const repoRoot = path.join(__dirname, '..')
 const systemPath = path.join(repoRoot, 'firmware', 'lib', 'System', 'System.cpp')
 const displayHeaderPath = path.join(repoRoot, 'firmware', 'lib', 'Display', 'Display.h')
+const staticPatternsPath = path.join(repoRoot, 'firmware', 'lib', 'System', 'static_patterns.h')
 
 test('shutdown wake path preserves the active display state across the temporary power-down animation', () => {
     const systemSource = fs.readFileSync(systemPath, 'utf8')
@@ -46,4 +47,12 @@ test('shutdown animation is streamed from PROGMEM instead of reserving a 64-byte
     assert.doesNotMatch(systemSource, /static uint8_t animationBuffer\[64\];/)
     assert.match(systemSource, /playShutdownAnimation\(\);/)
     assert.match(systemSource, /pgm_read_byte\(shutdownPattern \+ 4 \+ data_offset \+ col\)/)
+})
+
+test('shutdown animation timing matches the upstream cadence independently of the boot text speed', () => {
+    const systemSource = fs.readFileSync(systemPath, 'utf8')
+    const staticPatterns = fs.readFileSync(staticPatternsPath, 'utf8')
+
+    assert.match(systemSource, /const uint32_t full_refresh_us = 8UL \* 256UL;/)
+    assert.match(staticPatterns, /const uint8_t PROGMEM shutdownPattern\[\] = \{\s*0x20, 0x40,\s*0x0E, 0x0F,/s)
 })

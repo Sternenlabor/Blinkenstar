@@ -26,8 +26,9 @@ void Display::enable()
     DDRB = 0xFF; // Columns output
     DDRD = 0xFF; // Rows output
 
-    // Start Timer1 at 60 Hz to drive multiplexing
-    timer.initialize(60); //60 µs period
+    // Match the upstream multiplex cadence: one column every 256 us,
+    // which yields a full 8-column refresh every 2048 us.
+    timer.initialize(256);
     timer.attachInterrupt(onTimerTick);
     timer.start();
 

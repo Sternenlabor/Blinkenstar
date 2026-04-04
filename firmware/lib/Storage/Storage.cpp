@@ -12,45 +12,103 @@
 #include <util/delay.h>
 #include "Storage.h"
 
-// Minimal TWI helpers
 static inline void twi_stop()
 {
     TWCR = _BV(TWINT) | _BV(TWEN) | _BV(TWSTO);
 }
 
-static bool twi_start(uint8_t sla_rw)
+static uint8_t i2c_start_read_()
 {
     TWCR = _BV(TWINT) | _BV(TWSTA) | _BV(TWEN);
     while (!(TWCR & _BV(TWINT)))
-        ;
-    TWDR = sla_rw;
+    {
+    }
+
+    if (!((TWSR & 0x18) == 0x08 || (TWSR & 0x18) == 0x10))
+    {
+        return 1;
+    }
+
+    TWDR = (I2C_EEPROM_ADDR << 1) | 1;
     TWCR = _BV(TWINT) | _BV(TWEN);
     while (!(TWCR & _BV(TWINT)))
-        ;
-    // Check for ACK
-    uint8_t status = TWSR & 0xF8;
-    return (status == 0x18) || (status == 0x40); // SLA+W ACK or SLA+R ACK
+    {
+    }
+
+    if (TWSR != 0x40)
+    {
+        return 2;
+    }
+
+    return 0;
 }
 
-static bool twi_write(uint8_t v)
+static uint8_t i2c_start_write_()
 {
-    TWDR = v;
+    TWCR = _BV(TWINT) | _BV(TWSTA) | _BV(TWEN);
+    while (!(TWCR & _BV(TWINT)))
+    {
+    }
+
+    if (!((TWSR & 0x18) == 0x08 || (TWSR & 0x18) == 0x10))
+    {
+        return 1;
+    }
+
+    TWDR = (I2C_EEPROM_ADDR << 1) | 0;
     TWCR = _BV(TWINT) | _BV(TWEN);
     while (!(TWCR & _BV(TWINT)))
-        ;
-    uint8_t status = TWSR & 0xF8;
-    return (status == 0x28); // data ACK
+    {
+    }
+
+    if (TWSR != 0x18)
+    {
+        return 2;
+    }
+
+    return 0;
 }
 
-static uint8_t twi_read(bool ack)
+static uint8_t i2c_send_(uint8_t len, uint8_t *data)
 {
-    if (ack)
-        TWCR = _BV(TWINT) | _BV(TWEN) | _BV(TWEA);
-    else
+    for (uint8_t pos = 0; pos < len; pos++)
+    {
+        TWDR = data[pos];
         TWCR = _BV(TWINT) | _BV(TWEN);
-    while (!(TWCR & _BV(TWINT)))
-        ;
-    return TWDR;
+        while (!(TWCR & _BV(TWINT)))
+        {
+        }
+
+        if (TWSR != 0x28)
+        {
+            return pos;
+        }
+    }
+
+    return len;
+}
+
+static uint8_t i2c_receive_(uint8_t len, uint8_t *data)
+{
+    for (uint8_t pos = 0; pos < len; pos++)
+    {
+        if (pos == (uint8_t)(len - 1))
+        {
+            TWCR = _BV(TWINT) | _BV(TWEN);
+        }
+        else
+        {
+            TWCR = _BV(TWINT) | _BV(TWEN) | _BV(TWEA);
+        }
+
+        while (!(TWCR & _BV(TWINT)))
+        {
+        }
+
+        data[pos] = TWDR;
+    }
+
+    return len;
 }
 
 Storage storage;
@@ -192,83 +250,95 @@ void Storage::append(uint8_t *data)
 
 uint8_t Storage::i2c_write(uint8_t addrhi, uint8_t addrlo, uint8_t len, uint8_t *data)
 {
+    uint8_t addr_buf[2];
+
+    addr_buf[0] = addrhi;
+    addr_buf[1] = addrlo;
+
     /*
      * The EEPROM might be busy processing a write command, which can
      * take up to 10ms. Wait up to 16ms to respond before giving up.
      * All other error conditions (even though they should never happen[tm])
      * are handled the same way.
      */
-    for (uint8_t num_tries = 0; num_tries < 8; num_tries++)
+    for (uint8_t num_tries = 0; num_tries < 32; num_tries++)
     {
-        if (!twi_start((I2C_EEPROM_ADDR << 1) | 0))
-            continue;
-        if (!twi_write(addrhi))
+        if (num_tries > 0)
         {
-            twi_stop();
-            continue;
+            _delay_us(500);
         }
-        if (!twi_write(addrlo))
-        {
-            twi_stop();
-            continue;
-        }
-        for (uint8_t i = 0; i < len; i++)
-        {
-            if (!twi_write(data[i]))
-            {
-                twi_stop();
-                return I2C_ERR;
-            }
-        }
-        twi_stop();
 
-        // The EEPROM NACKs while internally programming the page, so ACK polling is the cheapest ready check.
-        for (uint8_t p = 0; p < 50; ++p) // up to ~5ms total
+        if (i2c_start_write_() != I2C_OK)
         {
-            if (twi_start((I2C_EEPROM_ADDR << 1) | 0))
-            {
-                twi_stop();
-                return I2C_OK;
-            }
-            _delay_us(100);
+            twi_stop();
+            continue;
         }
+
+        if (i2c_send_(2, addr_buf) != 2)
+        {
+            twi_stop();
+            continue;
+        }
+
+        if (i2c_send_(len, data) != len)
+        {
+            twi_stop();
+            continue;
+        }
+
         twi_stop();
+        return I2C_OK;
     }
+
+    twi_stop();
     return I2C_ERR;
 }
 
 uint8_t Storage::i2c_read(uint8_t addrhi, uint8_t addrlo, uint8_t len, uint8_t *data)
 {
+    uint8_t addr_buf[2];
+
+    addr_buf[0] = addrhi;
+    addr_buf[1] = addrlo;
+
     /*
      * See comments in i2c_write.
      */
-    for (uint8_t num_tries = 0; num_tries < 8; num_tries++)
+    for (uint8_t num_tries = 0; num_tries < 32; num_tries++)
     {
-        if (!twi_start((I2C_EEPROM_ADDR << 1) | 0))
-            continue;
-        if (!twi_write(addrhi))
+        if (num_tries > 0)
+        {
+            _delay_us(500);
+        }
+
+        if (i2c_start_write_() != I2C_OK)
         {
             twi_stop();
             continue;
         }
-        if (!twi_write(addrlo))
+
+        if (i2c_send_(2, addr_buf) != 2)
         {
             twi_stop();
             continue;
         }
-        // Repeated START and SLA+R
-        if (!twi_start((I2C_EEPROM_ADDR << 1) | 1))
+
+        if (i2c_start_read_() != I2C_OK)
         {
             twi_stop();
             continue;
         }
-        for (uint8_t i = 0; i < len; i++)
+
+        if (i2c_receive_(len, data) != len)
         {
-            bool ack = (i < (len - 1));
-            data[i] = twi_read(ack);
+            twi_stop();
+            continue;
         }
+
         twi_stop();
         return I2C_OK;
     }
+
+    twi_stop();
     return I2C_ERR;
 }
