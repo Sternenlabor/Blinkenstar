@@ -42,6 +42,43 @@ static void showEmptyStorageMessage()
 }
 #endif
 
+#if defined(ENABLE_MODEM) && !defined(RX_NO_STORAGE) && !defined(NO_STORED_PATTERN_BOOT_RESTORE)
+/**
+ * Return whether both front buttons are intentionally held during cold boot.
+ *
+ * @returns `true` when the two-button factory-reset chord survives debounce.
+ */
+static bool factoryResetRequested()
+{
+    if (!button1_is_low() || !button2_is_low())
+    {
+        return false;
+    }
+
+    // A short settle delay avoids treating pull-up ramp noise as a real reset request.
+    delay(25);
+    return button1_is_low() && button2_is_low();
+}
+
+/**
+ * Clear persisted storage when the user holds the factory-reset chord at boot.
+ *
+ * @returns `true` when the stored-pattern metadata was erased.
+ */
+static bool resetStorageIfRequested()
+{
+    if (!factoryResetRequested())
+    {
+        return false;
+    }
+
+    storage.enable();
+    storage.reset();
+    storage.sync();
+    return true;
+}
+#endif
+
 /**
  * Return the number of frames stored inside the shutdown animation pattern.
  *
@@ -221,6 +258,9 @@ void System::initialize()
     debuglog::print("MCUSR=0x");
     debuglog::printlnHex8(reset_cause);
     diaglog::reset(reset_cause);
+#if defined(ENABLE_MODEM) && !defined(RX_NO_STORAGE) && !defined(NO_STORED_PATTERN_BOOT_RESTORE)
+    const bool factory_reset_requested = resetStorageIfRequested();
+#endif
 #ifdef JP1_DEBUG_SKIP_MODEM
     debuglog::println("MODEM SKIP");
 #endif
@@ -228,8 +268,11 @@ void System::initialize()
     // Initialize display
     display.enable();
 #if defined(ENABLE_MODEM) && !defined(RX_NO_STORAGE) && !defined(DIAG_RX) && !defined(NO_STORED_PATTERN_BOOT_RESTORE)
-    current_pattern_index_ = 0;
-    modemReceiver.showStoredPattern(current_pattern_index_);
+    if (!factory_reset_requested)
+    {
+        current_pattern_index_ = 0;
+        modemReceiver.showStoredPattern(current_pattern_index_);
+    }
 #endif
 #if defined(ENABLE_MODEM) && defined(RX_ALWAYS_ON) && defined(NO_BOOT_MESSAGE) && !defined(DIAG_RX)
     showRxStandbyCue();
