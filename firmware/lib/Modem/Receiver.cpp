@@ -37,6 +37,7 @@ inline void logRxLength(uint16_t length)
 
 #if !defined(RX_NO_STORAGE)
 static uint8_t display_payload_buf[132];
+static uint8_t flashing_pattern_buf[sizeof(flashingPattern)];
 
 /**
  * Decode a stored payload buffer into a temporary animation descriptor and show it.
@@ -84,6 +85,20 @@ static bool showPayloadBuffer(uint8_t *payload)
     anim.data = payload + 4;
     display.show(&anim);
     return true;
+}
+
+/**
+ * Show the upstream receive-start flashing animation from PROGMEM.
+ */
+static void showTransferFlashPattern()
+{
+    // Copy the small built-in receive cue into RAM so it can reuse the normal display payload path.
+    for (uint8_t i = 0; i < sizeof(flashingPattern); ++i)
+    {
+        flashing_pattern_buf[i] = pgm_read_byte(flashingPattern + i);
+    }
+
+    showPayloadBuffer(flashing_pattern_buf);
 }
 #endif
 #ifdef DIAG_RX
@@ -231,13 +246,8 @@ void ModemReceiver::process()
                     storage_ready = true;
                 }
                 storage.reset();
+                showTransferFlashPattern();
 #endif
-                // Show a lightweight receive cue without large buffers (use both ends for visibility)
-                display.clearColumns();
-                display.setIndicator(0, 0, 8);
-                display.setIndicator(7, 0, 8);
-                display.setIndicator(0, 7, 8);
-                display.setIndicator(7, 7, 8);
 #ifdef DIAG_RX
                 diag_hex_len = 0;
                 diag_capture_count = 0;
