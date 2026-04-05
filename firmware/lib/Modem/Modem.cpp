@@ -186,6 +186,9 @@ void Modem::onAdcIsr()
     processActivity_(activity);
 }
 
+/**
+ * Forward the ADC conversion-complete interrupt into the modem sampler.
+ */
 ISR(ADC_vect)
 {
     g_modem.onAdcIsr();

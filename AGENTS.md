@@ -33,7 +33,10 @@
 - Keep Node-side code in ESM `.mjs` and use explicit relative file extensions in imports.
 - Keep reusable JavaScript generators and encoders in `scripts/lib/` and keep `scripts/` entry points thin.
 - Preserve existing repo naming patterns. JavaScript files use lowercase kebab-case `.mjs`, while firmware modules use PascalCase header/source pairs.
+- Add JSDoc comments for every function or method in first-party `*.js` and `*.mjs` files under source, library, and test directories, including private helpers and test callbacks.
+- Add Doxygen-style comments for every function or method in first-party C/C++ source, library, and test files, including private helpers, static functions, and ISR entry points.
 - Add brief comments where behavior is not obvious, especially around modem thresholds, FEC or Hamming logic, timing assumptions, display multiplexing, pin mappings, and debug wiring.
+- Add inline comments wherever a decision, hardware assumption, or protocol behavior would otherwise be unclear to the next reader.
 - Prefer small focused helpers over large mixed-responsibility files.
 - Do not casually rename or repurpose the consolidated PlatformIO environments. The test suite asserts their names and intended roles.
 

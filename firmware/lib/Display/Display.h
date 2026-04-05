@@ -45,27 +45,94 @@ struct DisplayState
 class Display
 {
 public:
+    /**
+     * Construct the display driver with its default off-state buffer.
+     */
     Display();
+
+    /**
+     * Enable matrix GPIOs and start the multiplex timer.
+     */
     void enable();
+
+    /**
+     * Disable matrix output and stop the multiplex timer.
+     */
     void disable();
+
+    /**
+     * Drive one multiplex column and advance the animation counters.
+     */
     void multiplex();
+
+    /**
+     * Advance the currently active animation when the refresh threshold is reached.
+     */
     void update();
+
+    /**
+     * Reset animation counters and blank the display buffer.
+     */
     void reset();
+
+    /**
+     * Start showing an animation that already lives in RAM.
+     *
+     * @param anim Animation descriptor to copy and display.
+     */
     void show(const animation_t *anim);
+
+    /**
+     * Start the built-in boot message streamed from PROGMEM.
+     */
     void showBootMessage();
 
-    // Diagnostics: simple column control for hardware testing
+    /**
+     * Clear every column in the display buffer.
+     */
     void clearColumns();
+
+    /**
+     * Overwrite one display column in the backing buffer.
+     *
+     * @param idx Column index.
+     * @param value Active-low row mask for the column.
+     */
     void setColumn(uint8_t idx, uint8_t value);
 
-    // Activity indicator: briefly overlay a pixel without disrupting animations
+    /**
+     * Overlay a transient activity pixel without disturbing the main animation state.
+     *
+     * @param col Indicator column.
+     * @param row Indicator row.
+     * @param frames Number of full refreshes to keep the indicator visible.
+     */
     void setIndicator(uint8_t col, uint8_t row, uint8_t frames);
+
+    /**
+     * Remove any transient activity indicator pixel.
+     */
     void clearIndicator();
 
-    // Save and restore the currently visible frame so temporary overlays like
-    // the shutdown animation do not clobber the user's display across wake.
+    /**
+     * Capture the visible display state for later restoration.
+     *
+     * @param state Destination snapshot.
+     */
     void snapshotState(DisplayState &state) const;
+
+    /**
+     * Restore a snapshot as a frozen static frame.
+     *
+     * @param state Snapshot to freeze into the display buffer.
+     */
     void freezeState(const DisplayState &state);
+
+    /**
+     * Restore a snapshot, restarting animations or the boot message when needed.
+     *
+     * @param state Snapshot to restore.
+     */
     void restoreState(const DisplayState &state);
 
 private:

@@ -8,6 +8,12 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const platformioPath = path.join(__dirname, '..', 'firmware', 'platformio.ini')
 const platformioConfig = fs.readFileSync(platformioPath, 'utf8')
 
+/**
+ * Return the raw text block for a named PlatformIO environment.
+ *
+ * @param {string} name Environment name without the `env:` prefix.
+ * @returns {string|null} Raw environment block or `null` if it is missing.
+ */
 function getEnvSection(name) {
     const marker = `[env:${name}]`
     const start = platformioConfig.indexOf(marker)
@@ -20,6 +26,9 @@ function getEnvSection(name) {
     return nextEnv === -1 ? remaining : remaining.slice(0, nextEnv + 1)
 }
 
+/**
+ * Verify that only the supported consolidated firmware environments remain in the checked-in config.
+ */
 test('platformio.ini exposes only the consolidated build environments', () => {
     for (const name of ['release', 'debugwire', 'jp1debug', 'hwdiag']) {
         assert.ok(getEnvSection(name), `expected env:${name} to exist`)
@@ -30,6 +39,9 @@ test('platformio.ini exposes only the consolidated build environments', () => {
     }
 })
 
+/**
+ * Verify that `jp1debug` inherits the release modem path while adding JP1-specific diagnostics.
+ */
 test('jp1debug is the RX diagnostic build with JP1 serial logging', () => {
     const release = getEnvSection('release')
     const jp1debug = getEnvSection('jp1debug')
@@ -62,6 +74,9 @@ test('jp1debug is the RX diagnostic build with JP1 serial logging', () => {
     assert.match(debugwire, /-DNO_STORED_PATTERN_BOOT_RESTORE/)
 })
 
+/**
+ * Verify that `jp1debug` keeps the low-RAM no-boot-message policy.
+ */
 test('jp1debug keeps NO_BOOT_MESSAGE to preserve the low-RAM RX debug path', () => {
     const jp1debug = getEnvSection('jp1debug')
 
@@ -69,6 +84,9 @@ test('jp1debug keeps NO_BOOT_MESSAGE to preserve the low-RAM RX debug path', () 
     assert.match(jp1debug, /-DNO_BOOT_MESSAGE/)
 })
 
+/**
+ * Verify that `hwdiag` keeps its button test behavior while still allowing boot-message isolation checks.
+ */
 test('hwdiag keeps button diagnostics while enabling the boot-message renderer for isolation tests', () => {
     const hwdiag = getEnvSection('hwdiag')
 

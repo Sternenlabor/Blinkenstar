@@ -8,6 +8,9 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const repoRoot = path.join(__dirname, '..')
 const systemPath = path.join(repoRoot, 'firmware', 'lib', 'System', 'System.cpp')
 
+/**
+ * Verify that reset-cause handling snapshots MCUSR before it is cleared and reused.
+ */
 test('system initialization captures and clears MCUSR before logging or branching on reset cause', () => {
     const systemSource = fs.readFileSync(systemPath, 'utf8')
 
@@ -17,6 +20,9 @@ test('system initialization captures and clears MCUSR before logging or branchin
     assert.match(systemSource, /uint8_t mcusr = reset_cause;/)
 })
 
+/**
+ * Verify that JP1 headless diagnostics can disable matrix refresh load after boot.
+ */
 test('jp1 headless RX diagnostics can disable the matrix refresh load after boot', () => {
     const systemSource = fs.readFileSync(systemPath, 'utf8')
 
@@ -24,6 +30,9 @@ test('jp1 headless RX diagnostics can disable the matrix refresh load after boot
     assert.match(systemSource, /display\.disable\(\);/)
 })
 
+/**
+ * Verify that JP1 diagnostics can skip modem bring-up while preserving boot logging.
+ */
 test('jp1 diagnostics can skip modem bring-up while keeping boot logging alive', () => {
     const systemSource = fs.readFileSync(systemPath, 'utf8')
 

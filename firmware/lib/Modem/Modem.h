@@ -7,41 +7,109 @@
 class Modem
 {
 public:
+    /**
+     * Construct the receive modem with zeroed runtime state.
+     */
     Modem() {}
 
-    void begin();   // enable ADC sampling and internal state
-    void end();     // disable ADC
+    /**
+     * Enable ADC sampling and reset the demodulator state.
+     */
+    void begin();
 
-    // ring buffer API (raw received bytes)
+    /**
+     * Disable ADC sampling and release the analog front end.
+     */
+    void end();
+
+    /**
+     * Report how many raw decoded bytes are buffered.
+     *
+     * @returns Number of buffered bytes.
+     */
     uint8_t available() const;
+
+    /**
+     * Read one raw decoded byte from the modem ring buffer.
+     *
+     * @returns Next buffered byte, or zero when no byte is available.
+     */
     uint8_t read();
+
+    /**
+     * Drop all buffered raw bytes.
+     */
     void clear();
 
-    // ISR hook
+    /**
+     * Consume one ADC sample batch from the ADC interrupt context.
+     */
     void onAdcIsr();
 
-    // Polling alternative to ISR to reduce contention with display
+    /**
+     * Poll for completed ADC conversions instead of relying on the ISR path.
+     *
+     * @param budget Maximum number of conversions to consume in one call.
+     */
     void poll(uint8_t budget = 64);
 
-    // Diagnostics: expose recent activity (sum of absolute deltas)
+    /**
+     * Return the most recent activity magnitude sample.
+     *
+     * @returns Last activity value.
+     */
     uint16_t getActivity() const { return last_activity_; }
+
+    /**
+     * Return the smoothed activity average from the adaptive slicer.
+     *
+     * @returns Smoothed activity average.
+     */
     uint16_t getActivityAvg() const { return slicer_.average(); }
+
+    /**
+     * Return and reset the maximum activity observed since the last query.
+     *
+     * @returns Peak activity value.
+     */
     uint16_t consumeActivityPeak()
     {
         uint16_t peak = activity_peak_;
         activity_peak_ = last_activity_;
         return peak;
     }
+
+    /**
+     * Return and reset the recent transition count used by diagnostics.
+     *
+     * @returns Number of tracked frequency transitions.
+     */
     uint8_t consumeTransitionCount()
     {
         uint8_t count = transition_count_;
         transition_count_ = 0;
         return count;
     }
+
+    /**
+     * Report whether the adaptive slicer currently sees a tone.
+     *
+     * @returns `true` while tone is present.
+     */
     bool isTonePresent() const { return slicer_.tonePresent(); }
 
-    // Diagnostics: capture recent raw bytes (pre-FEC)
+    /**
+     * Clear the recent raw-byte diagnostic ring.
+     */
     void clearRecentRaw() { recent_count_ = 0; }
+
+    /**
+     * Copy the most recent raw bytes into a caller-provided buffer.
+     *
+     * @param out Destination buffer.
+     * @param max_n Maximum number of bytes to copy.
+     * @returns Number of bytes written.
+     */
     uint8_t getRecentRaw(uint8_t *out, uint8_t max_n) const;
 
 private:
@@ -51,6 +119,11 @@ private:
     volatile uint8_t tail_ = 0;
     uint8_t buf_[BUF_SIZE];
 
+    /**
+     * Push one byte into the raw ring buffer if space is available.
+     *
+     * @param b Byte to enqueue.
+     */
     inline void put_(uint8_t b)
     {
         uint8_t next = head_ + 1;
@@ -114,8 +187,23 @@ private:
     uint8_t recent_idx_ = 0;
     uint8_t recent_count_ = 0;
 
+    /**
+     * Return the DIDR0 bit mask for the configured ADC channel.
+     *
+     * @returns Bit mask for the active channel.
+     */
     static uint8_t adcDigitalInputDisableMask_();
+
+    /**
+     * Start one single-shot ADC conversion when that diagnostic mode is enabled.
+     */
     static void startConversion_();
+
+    /**
+     * Feed one accumulated activity measurement into the bit classifier.
+     *
+     * @param activity Activity magnitude for the completed sample window.
+     */
     void processActivity_(uint16_t activity);
 };
 

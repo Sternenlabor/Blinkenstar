@@ -3,6 +3,12 @@ import { Readable } from 'node:stream'
 const TWO_PI = Math.PI * 2
 const INT16_MAX = 32767
 
+/**
+ * Create a signed 16-bit mono sine buffer and report the ending phase.
+ *
+ * @param {{sampleRate: number, frequencyHz: number, amplitude: number, sampleCount: number, phase?: number}} options Generator options.
+ * @returns {{buffer: Buffer, phase: number}} PCM buffer and the phase to reuse for the next chunk.
+ */
 export function createSineBuffer({ sampleRate, frequencyHz, amplitude, sampleCount, phase = 0 }) {
     if (!Number.isInteger(sampleCount) || sampleCount <= 0) {
         throw new RangeError('sampleCount must be a positive integer')
@@ -38,6 +44,11 @@ export function createSineBuffer({ sampleRate, frequencyHz, amplitude, sampleCou
 }
 
 export class SineWavePcmStream extends Readable {
+    /**
+     * Build a streaming sine-wave source for the bench speaker helpers.
+     *
+     * @param {{sampleRate?: number, frequencyHz?: number, amplitude?: number, samplesPerChunk?: number}} [options={}] Stream options.
+     */
     constructor({
         sampleRate = 48000,
         frequencyHz = 1000,
@@ -53,6 +64,9 @@ export class SineWavePcmStream extends Readable {
         this.stopped = false
     }
 
+    /**
+     * Stop the stream and signal EOF to downstream consumers.
+     */
     stop() {
         if (this.stopped) {
             return
@@ -62,6 +76,9 @@ export class SineWavePcmStream extends Readable {
         this.push(null)
     }
 
+    /**
+     * Produce the next PCM chunk on demand.
+     */
     _read() {
         if (this.stopped) {
             this.push(null)

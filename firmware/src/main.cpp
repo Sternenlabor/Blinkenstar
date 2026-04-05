@@ -6,9 +6,23 @@
 #ifdef DIAG_BUTTONS
 
 // Buttons on Port C: PC3 (pin 26), PC7 (pin 20)
+/**
+ * Return whether the PC3 diagnostic button is currently pressed.
+ *
+ * @returns `true` when PC3 reads low.
+ */
 static inline bool btn_pc3_low() { return (PINC & _BV(PC3)) == 0; }
+
+/**
+ * Return whether the PC7 diagnostic button is currently pressed.
+ *
+ * @returns `true` when PC7 reads low.
+ */
 static inline bool btn_pc7_low() { return (PINC & _BV(PC7)) == 0; }
 
+/**
+ * Initialize the hardware diagnostic image.
+ */
 void setup()
 {
     // Configure buttons as inputs with pull-ups
@@ -19,6 +33,9 @@ void setup()
     display.enable();
 }
 
+/**
+ * Poll the diagnostic buttons and draw the matching column test pattern.
+ */
 void loop()
 {
     bool b1 = btn_pc3_low();
@@ -61,12 +78,18 @@ void loop()
 
 #else
 
+/**
+ * Initialize the normal firmware runtime.
+ */
 void setup()
 {
     // Initialize system (sets up display and timer)
     rocket.initialize();
 }
 
+/**
+ * Run the main firmware control loop.
+ */
 void loop()
 {
     // Continuously run system loop (not used in this case, as everything is interrupt-driven)

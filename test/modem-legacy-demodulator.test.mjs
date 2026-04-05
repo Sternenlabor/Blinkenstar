@@ -8,6 +8,9 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const repoRoot = path.join(__dirname, '..')
 const modemSourcePath = path.join(repoRoot, 'firmware', 'lib', 'Modem', 'Modem.cpp')
 
+/**
+ * Verify that the demodulator still follows the original fixed-threshold classification path.
+ */
 test('modem bit classification follows the legacy threshold demodulator from the original firmware', () => {
     const modemSource = fs.readFileSync(modemSourcePath, 'utf8')
 

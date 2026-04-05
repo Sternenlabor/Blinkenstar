@@ -8,7 +8,9 @@ static Timer timer;
 Display display; // Global display instance
 static constexpr uint8_t kBootMessageLength = sizeof(emptyPattern) - 4;
 
-// Timer interrupt handler: calls multiplexing
+/**
+ * Forward timer interrupts into the display multiplex routine.
+ */
 static void onTimerTick()
 {
     display.multiplex();

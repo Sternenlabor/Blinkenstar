@@ -16,6 +16,9 @@ public:
         STATE_HIGH = 2,
     };
 
+    /**
+     * Reset the adaptive envelope tracker to its idle state.
+     */
     void reset()
     {
         average_ = 0;
@@ -28,6 +31,12 @@ public:
         seeded_ = false;
     }
 
+    /**
+     * Classify one activity sample as idle, low, or high relative to the tracked envelope.
+     *
+     * @param activity Activity magnitude derived from recent ADC deltas.
+     * @returns Current slicer state for the sample.
+     */
     State update(uint16_t activity)
     {
         // Track a smoothed envelope so tone presence does not flap with single-sample spikes.
@@ -123,12 +132,42 @@ public:
         return state_;
     }
 
+    /**
+     * Return the smoothed activity average used for tone presence detection.
+     *
+     * @returns Smoothed activity average.
+     */
     uint16_t average() const { return average_; }
+
+    /**
+     * Report whether the slicer currently considers a tone present.
+     *
+     * @returns `true` when the tracked envelope exceeds the tone thresholds.
+     */
     bool tonePresent() const { return tone_present_; }
+
+    /**
+     * Return the current envelope midpoint used for state transitions.
+     *
+     * @returns Current midpoint.
+     */
     uint16_t midpoint() const { return midpoint_; }
+
+    /**
+     * Return the current tracked high/low span.
+     *
+     * @returns Envelope span.
+     */
     uint16_t span() const { return span_; }
 
 private:
+    /**
+     * Move one tracked envelope edge toward a new sample without jumping directly to it.
+     *
+     * @param current Current tracked value.
+     * @param target Newly observed value.
+     * @returns Adjusted tracked value.
+     */
     static uint16_t stepToward_(uint16_t current, uint16_t target)
     {
         if (current == target)

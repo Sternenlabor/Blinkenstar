@@ -8,6 +8,12 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const platformioPath = path.join(__dirname, '..', 'firmware', 'platformio.ini')
 const platformioConfig = fs.readFileSync(platformioPath, 'utf8')
 
+/**
+ * Return the raw text block for a named PlatformIO environment.
+ *
+ * @param {string} name Environment name without the `env:` prefix.
+ * @returns {string|null} Raw environment block or `null` if it is missing.
+ */
 function getEnvSection(name) {
     const marker = `[env:${name}]`
     const start = platformioConfig.indexOf(marker)
@@ -20,6 +26,9 @@ function getEnvSection(name) {
     return nextEnv === -1 ? remaining : remaining.slice(0, nextEnv + 1)
 }
 
+/**
+ * Verify that the normal release build uses the upstream-compatible modem timing knobs.
+ */
 test('release uses the legacy modem timing instead of the retuned slow-ADC overrides', () => {
     const release = getEnvSection('release')
 

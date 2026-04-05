@@ -7,6 +7,9 @@ import { fileURLToPath } from 'node:url'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
+/**
+ * Compile and run the host-side slicer probe to verify the adaptive detector behavior.
+ */
 test('adaptive modem slicer stays idle on noise and toggles on a strong tone', () => {
     const repoRoot = path.join(__dirname, '..')
     const source = path.join(repoRoot, 'firmware', 'test', 'ActivitySlicerHost.cpp')

@@ -9,6 +9,9 @@ const repoRoot = path.join(__dirname, '..')
 const displayHeaderPath = path.join(repoRoot, 'firmware', 'lib', 'Display', 'Display.h')
 const displaySourcePath = path.join(repoRoot, 'firmware', 'lib', 'Display', 'Display.cpp')
 
+/**
+ * Verify that the boot message renderer streams directly from PROGMEM instead of reserving SRAM buffers.
+ */
 test('boot message path streams animation data from PROGMEM instead of copying a RAM buffer', () => {
     const displayHeader = fs.readFileSync(displayHeaderPath, 'utf8')
     const displaySource = fs.readFileSync(displaySourcePath, 'utf8')
@@ -22,12 +25,18 @@ test('boot message path streams animation data from PROGMEM instead of copying a
     assert.match(displaySource, /pgm_read_byte\(emptyPattern \+ 4 \+ str_pos\)/)
 })
 
+/**
+ * Verify that the boot renderer can be enabled explicitly inside hardware diagnostics builds.
+ */
 test('boot message renderer can be enabled explicitly inside hardware diagnostics', () => {
     const displaySource = fs.readFileSync(displaySourcePath, 'utf8')
 
     assert.match(displaySource, /#if \(!defined\(DIAG_BUTTONS\) \|\| defined\(DIAG_BOOT_MESSAGE\)\) && !defined\(NO_BOOT_MESSAGE\)/)
 })
 
+/**
+ * Verify that restoring a saved boot-message state restarts the animation instead of freezing its last frame.
+ */
 test('restoring a saved boot-message state resumes the boot message instead of freezing its last frame', () => {
     const displayHeader = fs.readFileSync(displayHeaderPath, 'utf8')
     const displaySource = fs.readFileSync(displaySourcePath, 'utf8')

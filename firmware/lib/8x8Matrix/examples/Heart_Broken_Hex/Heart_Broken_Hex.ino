@@ -8,8 +8,14 @@ int i = 0;
 
 Matrix matrix(6, 7, 8, 9, 10, 11, 12, 13, A0, A1, A2, A3, A4, A5, 4, 5);
 
+/**
+ * Arduino example setup hook; this sketch needs no extra initialization.
+ */
 void setup() {}
 
+/**
+ * Continuously refresh the matrix while showing the broken-heart hexadecimal pattern.
+ */
 void loop() {
   if (i >= IMAGES_LEN) {
     i = 0;

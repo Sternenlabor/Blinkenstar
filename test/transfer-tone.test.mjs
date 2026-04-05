@@ -15,6 +15,9 @@ const packageJson = JSON.parse(
     fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8')
 )
 
+/**
+ * Verify that both transfer formats wrap the text payload in the expected framing bytes.
+ */
 test('transfer encoder frames both legacy and alternate transfer payloads around the token text', () => {
     const pattern = createTransferTestPattern({ token: 'ZX4K2' })
     const payloads = encodeTransferPayloads([pattern])
@@ -31,6 +34,9 @@ test('transfer encoder frames both legacy and alternate transfer payloads around
     }
 })
 
+/**
+ * Verify that the transfer helper emits both normalized samples and signed PCM output.
+ */
 test('transfer encoder generates one-shot audio samples and PCM output', () => {
     const pattern = createTransferTestPattern({ token: 'A1B2' })
     const samples = createTransferSamples([pattern])
@@ -41,6 +47,9 @@ test('transfer encoder generates one-shot audio samples and PCM output', () => {
     assert.equal(pcm.length, samples.length * 2)
 })
 
+/**
+ * Verify that the npm script still points at the one-shot transfer entrypoint.
+ */
 test('package.json exposes the transfer:test script', () => {
     assert.equal(packageJson.scripts['transfer:test'], 'node scripts/play-transfer-once.mjs')
 })

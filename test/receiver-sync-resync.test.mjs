@@ -8,6 +8,9 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const repoRoot = path.join(__dirname, '..')
 const receiverSourcePath = path.join(repoRoot, 'firmware', 'lib', 'Modem', 'Receiver.cpp')
 
+/**
+ * Verify that broken marker bytes force the parser all the way back to START1.
+ */
 test('receiver fully resynchronizes after invalid marker bytes like the upstream firmware', () => {
     const receiverSource = fs.readFileSync(receiverSourcePath, 'utf8')
 

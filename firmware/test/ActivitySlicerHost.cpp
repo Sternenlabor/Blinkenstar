@@ -5,6 +5,11 @@
 
 using TestSlicer = ActivitySlicer<30, 12, 8, 24>;
 
+/**
+ * Verify that low-amplitude noise never trips the tone detector.
+ *
+ * @returns `true` when the slicer stays idle throughout the noise sample.
+ */
 static bool testIdleStaysSilent()
 {
     TestSlicer slicer;
@@ -28,6 +33,11 @@ static bool testIdleStaysSilent()
     return true;
 }
 
+/**
+ * Verify that a strong repeating tone produces toggling classifier output.
+ *
+ * @returns `true` when the slicer reports a present tone and enough transitions.
+ */
 static bool testStrongToneProducesTransitions()
 {
     TestSlicer slicer;
@@ -67,6 +77,11 @@ static bool testStrongToneProducesTransitions()
     return true;
 }
 
+/**
+ * Run the host-side slicer regression checks.
+ *
+ * @returns Process exit code for the tiny host test binary.
+ */
 int main()
 {
     if (!testIdleStaysSilent())

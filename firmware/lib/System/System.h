@@ -18,8 +18,19 @@
 class System
 {
 public:
+    /**
+     * Initialize display, buttons, diagnostics, and optional modem subsystems.
+     */
     void initialize();
+
+    /**
+     * Run one iteration of the main firmware control loop.
+     */
     void loop();
+
+    /**
+     * Play the shutdown animation, enter sleep, and restore state on wake.
+     */
     void shutdown();
 
 private:

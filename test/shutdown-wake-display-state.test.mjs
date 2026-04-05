@@ -10,6 +10,9 @@ const systemPath = path.join(repoRoot, 'firmware', 'lib', 'System', 'System.cpp'
 const displayHeaderPath = path.join(repoRoot, 'firmware', 'lib', 'Display', 'Display.h')
 const staticPatternsPath = path.join(repoRoot, 'firmware', 'lib', 'System', 'static_patterns.h')
 
+/**
+ * Verify that shutdown/wake preserves the pre-sleep display state around the temporary power-down animation.
+ */
 test('shutdown wake path preserves the active display state across the temporary power-down animation', () => {
     const systemSource = fs.readFileSync(systemPath, 'utf8')
     const displayHeader = fs.readFileSync(displayHeaderPath, 'utf8')
@@ -41,6 +44,9 @@ test('shutdown wake path preserves the active display state across the temporary
     assert.ok(enableIndex < restoreIndex, 'expected display state restore after display hardware is re-enabled')
 })
 
+/**
+ * Verify that the shutdown animation is streamed directly from PROGMEM instead of reserving SRAM.
+ */
 test('shutdown animation is streamed from PROGMEM instead of reserving a 64-byte SRAM buffer', () => {
     const systemSource = fs.readFileSync(systemPath, 'utf8')
 
@@ -49,6 +55,9 @@ test('shutdown animation is streamed from PROGMEM instead of reserving a 64-byte
     assert.match(systemSource, /pgm_read_byte\(shutdownPattern \+ 4 \+ data_offset \+ col\)/)
 })
 
+/**
+ * Verify that shutdown timing still uses the upstream display cadence even if boot text speed changes.
+ */
 test('shutdown animation timing matches the upstream cadence independently of the boot text speed', () => {
     const systemSource = fs.readFileSync(systemPath, 'utf8')
     const staticPatterns = fs.readFileSync(staticPatternsPath, 'utf8')

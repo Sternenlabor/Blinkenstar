@@ -1,5 +1,4 @@
 #include <Arduino.h>
-#include <Wire.h>
 
 #define I2C_EEPROM_ADDR 0x50
 
@@ -27,49 +26,10 @@ private:
      */
     uint8_t first_free_page;
 
-    enum I2CStatus : uint8_t
-    {
-        I2C_OK,
-        I2C_START_ERR,
-        I2C_ADDR_ERR,
-        I2C_ERR
-    };
-
-    /**
-     * Reads len bytes of data stored on addrhi, addrlo from the EEPROM
-     * into the data buffer. Does a complete I2C transaction including
-     * start and stop conditions. addrlo may start at an arbitrary
-     * position, page boundaries are irrelevant for this function. If a
-     * read reaches the end of the EEPROM memory, it will wrap around to
-     * byte 0x0000.
-     *
-     * @param addrhi upper address byte. Must be less than 32
-     * @param addrlo lower address byte
-     * @param len number of bytes to read
-     * @param data pointer to data buffer, must be at least len bytes
-     * @return An I2CStatus value indicating success/failure
-     */
-    uint8_t i2c_read(uint8_t addrhi, uint8_t addrlo, uint8_t len, uint8_t *data);
-
-    /**
-     * Writes len bytes of data from the data buffer into addrhi, addrlo
-     * on the EEPROM. Does a complete I2C transaction including start and
-     * stop conditions. Note that the EEPROM consists of 32 byte pages,
-     * so it is not possible to write more than 32 bytes in one
-     * operation. Also note that this function does not check for page
-     * boundaries. Starting a 32-byte write in the middle of a page will
-     * put the first 16 bytes where they belong, while the second 16
-     * bytes will wrap around to the first 16 bytes of the page.
-     *
-     * @param addrhi upper address byte. Must be less than 32
-     * @param addrlo lower address byte
-     * @param len number of bytes to write
-     * @param data pointer to data buffer, must be at least len bytes
-     * @return An I2CStatus value indicating success/failure
-     */
-    uint8_t i2c_write(uint8_t addrhi, uint8_t addrlo, uint8_t len, uint8_t *data);
-
 public:
+    /**
+     * Construct an empty storage facade before the EEPROM is queried.
+     */
     Storage()
     {
         num_anims = 0;

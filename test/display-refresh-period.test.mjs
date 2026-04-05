@@ -8,6 +8,9 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const repoRoot = path.join(__dirname, '..')
 const displaySourcePath = path.join(repoRoot, 'firmware', 'lib', 'Display', 'Display.cpp')
 
+/**
+ * Verify that the display multiplex timer matches the upstream 256 microsecond cadence.
+ */
 test('display refresh period matches the upstream 256 microsecond multiplex timing', () => {
     const displaySource = fs.readFileSync(displaySourcePath, 'utf8')
 

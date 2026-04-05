@@ -14,21 +14,35 @@ namespace
 constexpr uint8_t kTxBit = PC0;
 constexpr uint16_t kBitDelayUs = static_cast<uint16_t>(1000000UL / JP1_DEBUG_BAUD);
 
+/**
+ * Drive the JP1 TX line high for idle or data bits.
+ */
 inline void txHigh()
 {
     PORTC |= _BV(kTxBit);
 }
 
+/**
+ * Drive the JP1 TX line low for start bits or zero bits.
+ */
 inline void txLow()
 {
     PORTC &= (uint8_t)~_BV(kTxBit);
 }
 
+/**
+ * Wait exactly one software UART bit period.
+ */
 inline void delayBit()
 {
     _delay_us(kBitDelayUs);
 }
 
+/**
+ * Print one hexadecimal nibble as an ASCII character.
+ *
+ * @param nibble Nibble to print.
+ */
 inline void writeHexNibble(uint8_t nibble)
 {
     if (nibble < 10)

@@ -36,11 +36,21 @@ DiagLogLayout EEMEM ee_diag_log;
 constexpr uint8_t kMagic = 0xD1;
 constexpr uint8_t kVersion = 0x01;
 
+/**
+ * Clear one EEPROM-backed diagnostic byte.
+ *
+ * @param field EEPROM field to reset.
+ */
 void resetField(uint8_t &field)
 {
     eeprom_update_byte(&field, 0);
 }
 
+/**
+ * Increment one EEPROM-backed diagnostic byte in place.
+ *
+ * @param field EEPROM field to increment.
+ */
 void incrementField(uint8_t &field)
 {
     uint8_t value = eeprom_read_byte(&field);

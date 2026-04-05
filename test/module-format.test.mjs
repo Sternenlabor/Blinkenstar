@@ -6,6 +6,12 @@ import { fileURLToPath } from 'node:url'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
+/**
+ * Recursively collect legacy `.js` files so the test can enforce the repo's `.mjs` convention.
+ *
+ * @param {string} rootDir Directory to scan.
+ * @returns {string[]} Absolute paths to `.js` files.
+ */
 function listJsFiles(rootDir) {
     return fs.readdirSync(rootDir, { withFileTypes: true })
         .flatMap((entry) => {
@@ -19,6 +25,9 @@ function listJsFiles(rootDir) {
         })
 }
 
+/**
+ * Verify that the bench scripts invoke the checked-in `.mjs` entry points.
+ */
 test('package scripts target .mjs entry points', () => {
     const packageJson = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8'))
 
@@ -26,6 +35,9 @@ test('package scripts target .mjs entry points', () => {
     assert.equal(packageJson.scripts['transfer:test'], 'node scripts/play-transfer-once.mjs')
 })
 
+/**
+ * Verify that first-party scripts and tests no longer keep CommonJS-style `.js` files around.
+ */
 test('first-party scripts and tests do not keep .js files', () => {
     const repoRoot = path.join(__dirname, '..')
     const jsFiles = [

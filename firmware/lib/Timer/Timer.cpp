@@ -97,8 +97,9 @@ void Timer::stop()
     TCCR1B &= ~((1 << CS12) | (1 << CS11) | (1 << CS10));
 }
 
-// Timer1 Compare Match A Interrupt Service Routine (ISR)
-// This ISR calls the user-defined callback if it’s set.
+/**
+ * Dispatch the Timer1 compare-match interrupt to the registered callback.
+ */
 ISR(TIMER1_COMPA_vect)
 {
     if (Timer::callback)

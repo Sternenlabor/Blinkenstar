@@ -8,108 +8,8 @@
  */
 
 #include <Arduino.h>
-#include <avr/io.h>
-#include <util/delay.h>
 #include "Storage.h"
-
-static inline void twi_stop()
-{
-    TWCR = _BV(TWINT) | _BV(TWEN) | _BV(TWSTO);
-}
-
-static uint8_t i2c_start_read_()
-{
-    TWCR = _BV(TWINT) | _BV(TWSTA) | _BV(TWEN);
-    while (!(TWCR & _BV(TWINT)))
-    {
-    }
-
-    if (!((TWSR & 0x18) == 0x08 || (TWSR & 0x18) == 0x10))
-    {
-        return 1;
-    }
-
-    TWDR = (I2C_EEPROM_ADDR << 1) | 1;
-    TWCR = _BV(TWINT) | _BV(TWEN);
-    while (!(TWCR & _BV(TWINT)))
-    {
-    }
-
-    if (TWSR != 0x40)
-    {
-        return 2;
-    }
-
-    return 0;
-}
-
-static uint8_t i2c_start_write_()
-{
-    TWCR = _BV(TWINT) | _BV(TWSTA) | _BV(TWEN);
-    while (!(TWCR & _BV(TWINT)))
-    {
-    }
-
-    if (!((TWSR & 0x18) == 0x08 || (TWSR & 0x18) == 0x10))
-    {
-        return 1;
-    }
-
-    TWDR = (I2C_EEPROM_ADDR << 1) | 0;
-    TWCR = _BV(TWINT) | _BV(TWEN);
-    while (!(TWCR & _BV(TWINT)))
-    {
-    }
-
-    if (TWSR != 0x18)
-    {
-        return 2;
-    }
-
-    return 0;
-}
-
-static uint8_t i2c_send_(uint8_t len, uint8_t *data)
-{
-    for (uint8_t pos = 0; pos < len; pos++)
-    {
-        TWDR = data[pos];
-        TWCR = _BV(TWINT) | _BV(TWEN);
-        while (!(TWCR & _BV(TWINT)))
-        {
-        }
-
-        if (TWSR != 0x28)
-        {
-            return pos;
-        }
-    }
-
-    return len;
-}
-
-static uint8_t i2c_receive_(uint8_t len, uint8_t *data)
-{
-    for (uint8_t pos = 0; pos < len; pos++)
-    {
-        if (pos == (uint8_t)(len - 1))
-        {
-            TWCR = _BV(TWINT) | _BV(TWEN);
-        }
-        else
-        {
-            TWCR = _BV(TWINT) | _BV(TWEN) | _BV(TWEA);
-        }
-
-        while (!(TWCR & _BV(TWINT)))
-        {
-        }
-
-        data[pos] = TWDR;
-    }
-
-    return len;
-}
+#include "TwiBus.h"
 
 Storage storage;
 
@@ -146,18 +46,11 @@ Storage storage;
 
 void Storage::enable()
 {
-    /*
-     * Set I2C clock frequency to 100kHz.
-     * freq = F_CPU / (16 + (2 * TWBR * TWPS) )
-     * let TWPS = "00" = 1
-     * -> TWBR = (F_CPU / 100000) - 16 / 2
-     */
-    // Configure TWI for ~100 kHz
-    TWSR = 0; // prescaler = 1
-    TWBR = ((F_CPU / 100000UL) - 16) / 2;
+    // The shared TWI bus owns peripheral setup; Storage only owns EEPROM layout semantics.
+    twiBus.enable();
 
     // Metadata byte 0 always mirrors the saved animation count.
-    i2c_read(0, 0, 1, &num_anims);
+    twiBus.read(I2C_EEPROM_ADDR, 0, 0, 1, &num_anims);
 }
 
 void Storage::reset()
@@ -168,7 +61,7 @@ void Storage::reset()
 
 void Storage::sync()
 {
-    i2c_write(0, 0, 1, &num_anims);
+    twiBus.write(I2C_EEPROM_ADDR, 0, 0, 1, &num_anims);
 }
 
 bool Storage::hasData()
@@ -183,7 +76,7 @@ bool Storage::hasData()
 
 void Storage::load(uint8_t idx, uint8_t *data)
 {
-    i2c_read(0, 1 + idx, 1, &page_offset);
+    twiBus.read(I2C_EEPROM_ADDR, 0, 1 + idx, 1, &page_offset);
 
     /*
      * Unconditionally read 132 bytes. The data buffer must hold at least
@@ -192,7 +85,7 @@ void Storage::load(uint8_t idx, uint8_t *data)
      * Also note that the EEPROM automatically wraps around when the end of
      * memory is reached, so this edge case doesn't need to be accounted for.
      */
-    i2c_read(1 + (page_offset / 8), (page_offset % 8) * 32, 132, data);
+    twiBus.read(I2C_EEPROM_ADDR, 1 + (page_offset / 8), (page_offset % 8) * 32, 132, data);
 }
 
 void Storage::loadChunk(uint8_t chunk, uint8_t *data)
@@ -200,7 +93,7 @@ void Storage::loadChunk(uint8_t chunk, uint8_t *data)
     uint8_t this_page_offset = page_offset + (4 * chunk);
 
     // Note that we do not load headers here -> 128 instead of 132 bytes
-    i2c_read(1 + (this_page_offset / 8), (this_page_offset % 8) * 32 + 4, 128, data);
+    twiBus.read(I2C_EEPROM_ADDR, 1 + (this_page_offset / 8), (this_page_offset % 8) * 32 + 4, 128, data);
 }
 
 void Storage::save(uint8_t *data)
@@ -229,7 +122,7 @@ void Storage::save(uint8_t *data)
         {
             num_anims++;
             // Persist the page pointer immediately so later append() calls know where the pattern starts.
-            i2c_write(0, num_anims, 1, &first_free_page);
+            twiBus.write(I2C_EEPROM_ADDR, 0, num_anims, 1, &first_free_page);
             append(data);
         }
     }
@@ -243,102 +136,7 @@ void Storage::append(uint8_t *data)
         // the header indicates the length of the data, but we really don't care
         // - it's easier to just write the whole page and skip the trailing
         // garbage when reading.
-        i2c_write(1 + (first_free_page / 8), (first_free_page % 8) * 32, 32, data);
+        twiBus.write(I2C_EEPROM_ADDR, 1 + (first_free_page / 8), (first_free_page % 8) * 32, 32, data);
         first_free_page++;
     }
-}
-
-uint8_t Storage::i2c_write(uint8_t addrhi, uint8_t addrlo, uint8_t len, uint8_t *data)
-{
-    uint8_t addr_buf[2];
-
-    addr_buf[0] = addrhi;
-    addr_buf[1] = addrlo;
-
-    /*
-     * The EEPROM might be busy processing a write command, which can
-     * take up to 10ms. Wait up to 16ms to respond before giving up.
-     * All other error conditions (even though they should never happen[tm])
-     * are handled the same way.
-     */
-    for (uint8_t num_tries = 0; num_tries < 32; num_tries++)
-    {
-        if (num_tries > 0)
-        {
-            _delay_us(500);
-        }
-
-        if (i2c_start_write_() != I2C_OK)
-        {
-            twi_stop();
-            continue;
-        }
-
-        if (i2c_send_(2, addr_buf) != 2)
-        {
-            twi_stop();
-            continue;
-        }
-
-        if (i2c_send_(len, data) != len)
-        {
-            twi_stop();
-            continue;
-        }
-
-        twi_stop();
-        return I2C_OK;
-    }
-
-    twi_stop();
-    return I2C_ERR;
-}
-
-uint8_t Storage::i2c_read(uint8_t addrhi, uint8_t addrlo, uint8_t len, uint8_t *data)
-{
-    uint8_t addr_buf[2];
-
-    addr_buf[0] = addrhi;
-    addr_buf[1] = addrlo;
-
-    /*
-     * See comments in i2c_write.
-     */
-    for (uint8_t num_tries = 0; num_tries < 32; num_tries++)
-    {
-        if (num_tries > 0)
-        {
-            _delay_us(500);
-        }
-
-        if (i2c_start_write_() != I2C_OK)
-        {
-            twi_stop();
-            continue;
-        }
-
-        if (i2c_send_(2, addr_buf) != 2)
-        {
-            twi_stop();
-            continue;
-        }
-
-        if (i2c_start_read_() != I2C_OK)
-        {
-            twi_stop();
-            continue;
-        }
-
-        if (i2c_receive_(len, data) != len)
-        {
-            twi_stop();
-            continue;
-        }
-
-        twi_stop();
-        return I2C_OK;
-    }
-
-    twi_stop();
-    return I2C_ERR;
 }

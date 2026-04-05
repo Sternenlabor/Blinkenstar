@@ -1,5 +1,10 @@
 #include "DebugSerial.h"
 
+/**
+ * Compile-time smoke test for the JP1 debug serial API surface.
+ *
+ * @returns Zero after exercising the available debug logging entry points.
+ */
 int main()
 {
     debuglog::begin();

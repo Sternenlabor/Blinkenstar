@@ -10,11 +10,21 @@ static bool storage_ready = false;
 #if defined(JP1_DEBUG_SERIAL) && defined(JP1_DEBUG_RX_EVENTS)
 namespace
 {
+/**
+ * Emit one compact JP1 receive event marker.
+ *
+ * @param event Short event string to print.
+ */
 inline void logRxEvent(const char *event)
 {
     debuglog::println(event);
 }
 
+/**
+ * Emit the decoded payload length in the JP1 debug stream.
+ *
+ * @param length Payload length in bytes.
+ */
 inline void logRxLength(uint16_t length)
 {
     debuglog::print("L");
@@ -28,6 +38,12 @@ inline void logRxLength(uint16_t length)
 #if !defined(RX_NO_STORAGE)
 static uint8_t display_payload_buf[132];
 
+/**
+ * Decode a stored payload buffer into a temporary animation descriptor and show it.
+ *
+ * @param payload Stored payload buffer beginning with the four-byte header.
+ * @returns `true` when the payload looks valid enough to display.
+ */
 static bool showPayloadBuffer(uint8_t *payload)
 {
     animation_t anim;

@@ -18,9 +18,25 @@ System rocket;
 
 // Buttons are wired to Port C pins: PC3 (pin 26) and PC7 (pin 20)
 // Use direct port access to avoid any Arduino pin mapping ambiguity
+/**
+ * Return whether button 1 is currently pressed.
+ *
+ * @returns `true` when PC3 reads low.
+ */
 static inline bool button1_is_low() { return (PINC & _BV(PC3)) == 0; }
+
+/**
+ * Return whether button 2 is currently pressed.
+ *
+ * @returns `true` when PC7 reads low.
+ */
 static inline bool button2_is_low() { return (PINC & _BV(PC7)) == 0; }
 
+/**
+ * Return the number of frames stored inside the shutdown animation pattern.
+ *
+ * @returns Shutdown frame count.
+ */
 static uint8_t shutdownFrameCount()
 {
     const uint8_t hdr0 = pgm_read_byte(shutdownPattern);
@@ -30,6 +46,11 @@ static uint8_t shutdownFrameCount()
     return data_length / 8;
 }
 
+/**
+ * Convert the shutdown pattern speed nibble into a real frame delay in milliseconds.
+ *
+ * @returns Delay between shutdown frames in milliseconds.
+ */
 static uint16_t shutdownFrameDelayMs()
 {
     const uint8_t p2 = pgm_read_byte(shutdownPattern + 2);
@@ -41,6 +62,11 @@ static uint16_t shutdownFrameDelayMs()
     return delay_ms == 0 ? 1 : delay_ms;
 }
 
+/**
+ * Draw one shutdown animation frame directly from PROGMEM.
+ *
+ * @param frame Zero-based frame index.
+ */
 static void showShutdownFrame(uint8_t frame)
 {
     const uint16_t data_offset = (uint16_t)frame * 8U;
@@ -51,6 +77,9 @@ static void showShutdownFrame(uint8_t frame)
     }
 }
 
+/**
+ * Play the full shutdown animation sequence once.
+ */
 static void playShutdownAnimation()
 {
     const uint8_t frame_count = shutdownFrameCount();
@@ -64,6 +93,9 @@ static void playShutdownAnimation()
 }
 
 #if defined(ENABLE_MODEM) && defined(RX_ALWAYS_ON) && defined(NO_BOOT_MESSAGE) && !defined(DIAG_RX)
+/**
+ * Show the lightweight RX standby border used by low-RAM debug builds.
+ */
 static void showRxStandbyCue()
 {
     // Keep a visible standby pattern in low-RAM RX builds that suppress
@@ -82,6 +114,9 @@ static void showRxStandbyCue()
 #endif
 
 #if defined(JP1_DEBUG_SERIAL) && defined(ENABLE_MODEM) && defined(JP1_DEBUG_TONE_DIAG)
+/**
+ * Print the idle modem heartbeat summary over the JP1 debug logger.
+ */
 static void printIdleHeartbeat()
 {
     debuglog::print("HB L=0x");
@@ -92,6 +127,9 @@ static void printIdleHeartbeat()
     debuglog::println(g_modem.isTonePresent() ? "1" : "0");
 }
 
+/**
+ * Print a compact summary of the most recent receive burst for JP1 capture.
+ */
 static void printToneSummary()
 {
     // Summarize the most recent burst in a compact JP1 log line for UART capture during bench bring-up.
@@ -460,7 +498,9 @@ void System::shutdown()
     debuglog::println("WAKE");
 }
 
-// ISR for wakeup via button presses
+/**
+ * Wake the MCU from button-triggered pin-change interrupts.
+ */
 ISR(PCINT1_vect)
 {
     // No action needed; wake-up is automatic

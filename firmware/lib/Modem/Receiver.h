@@ -18,18 +18,77 @@ public:
         DIAG_EVENT_FRAME = 0x10,
     };
 
+    /**
+     * Start the modem/FEC receive stack and reset parser state.
+     */
     void begin();
+
+    /**
+     * Stop the modem/FEC receive stack.
+     */
     void end();
-    void process(); // call frequently from loop
-    bool hasFrameComplete(); // true once after END processed
-    // Diagnostics: capture the most recent decoded bytes (post-FEC)
+
+    /**
+     * Consume any available modem bytes and advance the receive state machine.
+     */
+    void process();
+
+    /**
+     * Report whether a complete frame has been received since the last query.
+     *
+     * @returns `true` once after a frame completes.
+     */
+    bool hasFrameComplete();
+
+    /**
+     * Copy the most recent decoded bytes into an eight-byte buffer.
+     *
+     * @param out8 Destination buffer with space for eight bytes.
+     */
     void getLastBytes(uint8_t *out8);
+
+    /**
+     * Copy the first observed start-marker bytes for diagnostics.
+     *
+     * @param out8 Destination buffer with space for eight bytes.
+     * @param count Output count of captured start bytes.
+     */
     void getStartBytes(uint8_t *out8, uint8_t &count);
+
+    /**
+     * Return and clear the accumulated diagnostic event flags.
+     *
+     * @returns Bitwise OR of `DiagEvent` values.
+     */
     uint8_t consumeDiagEvents();
+
+    /**
+     * Return the most recently decoded payload length.
+     *
+     * @returns Payload length in bytes.
+     */
     uint16_t getDiagLength() const;
+
+    /**
+     * Report whether diagnostics are currently showing a hex preview.
+     *
+     * @returns `true` when the receive indicator is showing hex bytes.
+     */
     bool isShowingHex() const;
+
+    /**
+     * Report whether diagnostics are currently showing raw modem bytes.
+     *
+     * @returns `true` when raw modem bytes are being previewed.
+     */
     bool isShowingRaw() const;
 #if !defined(RX_NO_STORAGE)
+    /**
+     * Load and display a stored pattern from EEPROM.
+     *
+     * @param idx Stored pattern index.
+     * @returns `true` if a pattern was loaded and shown.
+     */
     bool showStoredPattern(uint8_t idx = 0);
 #endif
 

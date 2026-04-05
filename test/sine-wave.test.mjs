@@ -3,6 +3,9 @@ import assert from 'node:assert/strict'
 
 import { createSineBuffer } from '../scripts/lib/sine-wave.mjs'
 
+/**
+ * Verify that the sine generator returns exactly one 16-bit sample per requested sample slot.
+ */
 test('createSineBuffer returns the requested number of 16-bit PCM samples', () => {
     const { buffer } = createSineBuffer({
         sampleRate: 48000,
@@ -15,6 +18,9 @@ test('createSineBuffer returns the requested number of 16-bit PCM samples', () =
     assert.equal(buffer.length, 1024 * 2)
 })
 
+/**
+ * Verify that the sine generator never overflows the signed 16-bit PCM range.
+ */
 test('createSineBuffer keeps samples inside the signed 16-bit range', () => {
     const { buffer } = createSineBuffer({
         sampleRate: 48000,
@@ -31,6 +37,9 @@ test('createSineBuffer keeps samples inside the signed 16-bit range', () => {
     }
 })
 
+/**
+ * Verify that carrying phase between chunks produces a continuous waveform instead of restarting at zero.
+ */
 test('createSineBuffer preserves phase across adjacent chunks', () => {
     const first = createSineBuffer({
         sampleRate: 8000,

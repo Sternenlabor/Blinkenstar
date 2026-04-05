@@ -10,6 +10,9 @@ const systemPath = path.join(repoRoot, 'firmware', 'lib', 'System', 'System.cpp'
 const receiverHeaderPath = path.join(repoRoot, 'firmware', 'lib', 'Modem', 'Receiver.h')
 const receiverSourcePath = path.join(repoRoot, 'firmware', 'lib', 'Modem', 'Receiver.cpp')
 
+/**
+ * Verify that boot restores the first stored animation instead of leaving the screen blank.
+ */
 test('startup restores the first stored pattern instead of leaving the display dark', () => {
     const systemSource = fs.readFileSync(systemPath, 'utf8')
     const receiverHeader = fs.readFileSync(receiverHeaderPath, 'utf8')
