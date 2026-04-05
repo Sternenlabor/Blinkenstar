@@ -51,7 +51,8 @@ private:
     {
         BUTTON_NONE = 0,
         BUTTON_NEXT = 0x01,
-        BUTTON_PREVIOUS = 0x02
+        BUTTON_PREVIOUS = 0x02,
+        BUTTON_BROWSE_LOCKED = 0x80
     };
     bool modem_enabled = false;
 #ifndef RX_NO_STORAGE

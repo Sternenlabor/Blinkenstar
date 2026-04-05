@@ -432,7 +432,19 @@ void System::loop()
 #endif
 
 #if defined(ENABLE_MODEM) && !defined(RX_NO_STORAGE)
-    if ((long)(loop_now - button_debounce_until_ms_) >= 0)
+    if (button_mask_ == BUTTON_BROWSE_LOCKED)
+    {
+        /*
+         * Require one full clean release cycle before the next browse action
+         * can arm. This blocks contact bounce from turning a single press
+         * into a second next/previous step once the cooldown expires.
+         */
+        if (!button1_is_low() && !button2_is_low() && (long)(loop_now - button_debounce_until_ms_) >= 0)
+        {
+            button_mask_ = BUTTON_NONE;
+        }
+    }
+    else
     {
         if (button1_is_low())
         {
@@ -473,6 +485,7 @@ void System::loop()
                     showEmptyStorageMessage();
                 }
                 button_debounce_until_ms_ = loop_now + BUTTON_BROWSE_COOLDOWN_MS;
+                button_mask_ = BUTTON_BROWSE_LOCKED;
             }
             else if (button_mask_ == BUTTON_PREVIOUS)
             {
@@ -496,9 +509,12 @@ void System::loop()
                     showEmptyStorageMessage();
                 }
                 button_debounce_until_ms_ = loop_now + BUTTON_BROWSE_COOLDOWN_MS;
+                button_mask_ = BUTTON_BROWSE_LOCKED;
             }
-
-            button_mask_ = BUTTON_NONE;
+            else
+            {
+                button_mask_ = BUTTON_NONE;
+            }
         }
     }
 #endif
