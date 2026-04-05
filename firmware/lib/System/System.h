@@ -44,7 +44,18 @@ private:
 #endif
 #endif
 #ifdef ENABLE_MODEM
+    enum ButtonMask : uint8_t
+    {
+        BUTTON_NONE = 0,
+        BUTTON_NEXT = 0x01,
+        BUTTON_PREVIOUS = 0x02
+    };
     bool modem_enabled = false;
+#ifndef RX_NO_STORAGE
+    uint8_t current_pattern_index_ = 0;
+    uint8_t button_mask_ = 0;
+    uint32_t button_debounce_until_ms_ = 0;
+#endif
     uint16_t btn2_hold = 0;
     #ifndef RECEIVE_HOLD_TICKS
     #define RECEIVE_HOLD_TICKS 200
@@ -60,6 +71,6 @@ private:
 #endif
 };
 
-extern System rocket;
+extern System blinkenstar;
 
 #endif

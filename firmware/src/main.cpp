@@ -84,7 +84,7 @@ void loop()
 void setup()
 {
     // Initialize system (sets up display and timer)
-    rocket.initialize();
+    blinkenstar.initialize();
 }
 
 /**
@@ -93,7 +93,7 @@ void setup()
 void loop()
 {
     // Continuously run system loop (not used in this case, as everything is interrupt-driven)
-    rocket.loop();
+    blinkenstar.loop();
 }
 
 #endif

@@ -14,7 +14,7 @@
 #include "Modem.h"
 #endif
 
-System rocket;
+System blinkenstar;
 
 // Buttons are wired to Port C pins: PC3 (pin 26) and PC7 (pin 20)
 // Use direct port access to avoid any Arduino pin mapping ambiguity
@@ -31,6 +31,16 @@ static inline bool button1_is_low() { return (PINC & _BV(PC3)) == 0; }
  * @returns `true` when PC7 reads low.
  */
 static inline bool button2_is_low() { return (PINC & _BV(PC7)) == 0; }
+
+#if defined(ENABLE_MODEM) && !defined(RX_NO_STORAGE)
+/**
+ * Restart the empty-storage boot text when no stored payload can be selected.
+ */
+static void showEmptyStorageMessage()
+{
+    display.showBootMessage();
+}
+#endif
 
 /**
  * Return the number of frames stored inside the shutdown animation pattern.
@@ -218,7 +228,8 @@ void System::initialize()
     // Initialize display
     display.enable();
 #if defined(ENABLE_MODEM) && !defined(RX_NO_STORAGE) && !defined(DIAG_RX) && !defined(NO_STORED_PATTERN_BOOT_RESTORE)
-    modemReceiver.showStoredPattern(0);
+    current_pattern_index_ = 0;
+    modemReceiver.showStoredPattern(current_pattern_index_);
 #endif
 #if defined(ENABLE_MODEM) && defined(RX_ALWAYS_ON) && defined(NO_BOOT_MESSAGE) && !defined(DIAG_RX)
     showRxStandbyCue();
@@ -261,8 +272,11 @@ void System::initialize()
 
 void System::loop()
 {
+#if (defined(ENABLE_MODEM) && !defined(RX_NO_STORAGE)) || (defined(JP1_DEBUG_SERIAL) && !defined(JP1_DEBUG_NO_HEARTBEAT))
+    const unsigned long loop_now = millis();
+#endif
+
 #if defined(JP1_DEBUG_SERIAL) && !defined(JP1_DEBUG_NO_HEARTBEAT)
-    const unsigned long now = millis();
 #if defined(ENABLE_MODEM) && defined(JP1_DEBUG_TONE_DIAG)
     const bool tone_present = g_modem.isTonePresent();
     if (tone_present)
@@ -277,9 +291,9 @@ void System::loop()
 #endif
     if (debug_heartbeat_at_ms == 0)
     {
-        debug_heartbeat_at_ms = now + 1000;
+        debug_heartbeat_at_ms = loop_now + 1000;
     }
-    else if ((long)(now - debug_heartbeat_at_ms) >= 0)
+    else if ((long)(loop_now - debug_heartbeat_at_ms) >= 0)
     {
 #ifdef ENABLE_MODEM
 #ifdef JP1_DEBUG_TONE_DIAG
@@ -298,7 +312,7 @@ void System::loop()
 #else
         debuglog::heartbeat();
 #endif
-        debug_heartbeat_at_ms = now + 1000;
+        debug_heartbeat_at_ms = loop_now + 1000;
     }
 #endif
 
@@ -325,6 +339,11 @@ void System::loop()
                 display.setIndicator(7, 7, 20); // disabled
             }
             btn2_latched = true;
+#ifndef RX_NO_STORAGE
+            // A receive-mode toggle is not also a browse action on release.
+            button_mask_ = BUTTON_NONE;
+            button_debounce_until_ms_ = loop_now + 25;
+#endif
         }
     }
     else
@@ -369,6 +388,70 @@ void System::loop()
   #endif
 #endif
 
+#if defined(ENABLE_MODEM) && !defined(RX_NO_STORAGE)
+    if ((long)(loop_now - button_debounce_until_ms_) >= 0)
+    {
+        if (button1_is_low())
+        {
+            // Match the upstream browse semantics: the PC3 button advances.
+            button_mask_ |= BUTTON_NEXT;
+        }
+        if (button2_is_low())
+        {
+            // Match the upstream browse semantics: the PC7 button rewinds.
+            button_mask_ |= BUTTON_PREVIOUS;
+        }
+
+        /*
+         * Only browse stored patterns once the buttons are released. This
+         * preserves the upstream behavior and avoids accidental flips when the
+         * user actually intended a dual-button shutdown press.
+         */
+        if (!button1_is_low() && !button2_is_low())
+        {
+            storage.enable();
+
+            if (button_mask_ == BUTTON_NEXT)
+            {
+                if (storage.hasData())
+                {
+                    current_pattern_index_ = (current_pattern_index_ + 1) % storage.numPatterns();
+                    modemReceiver.showStoredPattern(current_pattern_index_);
+                }
+                else
+                {
+                    current_pattern_index_ = 0;
+                    showEmptyStorageMessage();
+                }
+                button_debounce_until_ms_ = loop_now + 25;
+            }
+            else if (button_mask_ == BUTTON_PREVIOUS)
+            {
+                if (storage.hasData())
+                {
+                    if (current_pattern_index_ == 0)
+                    {
+                        current_pattern_index_ = storage.numPatterns() - 1;
+                    }
+                    else
+                    {
+                        current_pattern_index_--;
+                    }
+                    modemReceiver.showStoredPattern(current_pattern_index_);
+                }
+                else
+                {
+                    current_pattern_index_ = 0;
+                    showEmptyStorageMessage();
+                }
+                button_debounce_until_ms_ = loop_now + 25;
+            }
+
+            button_mask_ = BUTTON_NONE;
+        }
+    }
+#endif
+
     if (modem_enabled)
     {
         // Process first; if a frame completed, leave receive mode and keep the shown pattern
@@ -382,6 +465,9 @@ void System::loop()
 #endif
             // Drop back out of receive mode once one transfer has been fully decoded and displayed.
             modem_enabled = false;
+#ifndef RX_NO_STORAGE
+            current_pattern_index_ = 0;
+#endif
             modemReceiver.end();
             debuglog::println("FRAME DONE");
             display.setIndicator(7, 7, 20); // disabled

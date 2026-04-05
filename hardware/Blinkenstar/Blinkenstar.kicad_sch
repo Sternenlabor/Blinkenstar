@@ -2473,7 +2473,7 @@
 			)
 			(embedded_fonts no)
 		)
-		(symbol "blinkenrocket_cr2032-eagle-import:AVR-ISP-6VERT"
+		(symbol "blinkenstar_cr2032-eagle-import:AVR-ISP-6VERT"
 			(exclude_from_sim no)
 			(in_bom yes)
 			(on_board yes)
@@ -2495,7 +2495,7 @@
 					(hide yes)
 				)
 			)
-			(property "Footprint" "blinkenrocket_cr2032:AVR-ISP-6"
+			(property "Footprint" "blinkenstar_cr2032:AVR-ISP-6"
 				(at 0 0 0)
 				(effects
 					(font
@@ -2825,7 +2825,7 @@
 			)
 			(embedded_fonts no)
 		)
-		(symbol "blinkenrocket_cr2032-eagle-import:C-EUC1206"
+		(symbol "blinkenstar_cr2032-eagle-import:C-EUC1206"
 			(exclude_from_sim no)
 			(in_bom yes)
 			(on_board yes)
@@ -2847,7 +2847,7 @@
 					(justify left bottom)
 				)
 			)
-			(property "Footprint" "blinkenrocket_cr2032:C1206"
+			(property "Footprint" "blinkenstar_cr2032:C1206"
 				(at 0 0 0)
 				(effects
 					(font
@@ -2968,7 +2968,7 @@
 			)
 			(embedded_fonts no)
 		)
-		(symbol "blinkenrocket_cr2032-eagle-import:PINHD-1X04_2.54-S"
+		(symbol "blinkenstar_cr2032-eagle-import:PINHD-1X04_2.54-S"
 			(exclude_from_sim no)
 			(in_bom yes)
 			(on_board yes)
@@ -2990,7 +2990,7 @@
 					(justify left bottom)
 				)
 			)
-			(property "Footprint" "blinkenrocket_cr2032:1X04-S"
+			(property "Footprint" "blinkenstar_cr2032:1X04-S"
 				(at 0 0 0)
 				(effects
 					(font
@@ -3149,7 +3149,7 @@
 			)
 			(embedded_fonts no)
 		)
-		(symbol "blinkenrocket_cr2032-eagle-import:R-EU_R1206"
+		(symbol "blinkenstar_cr2032-eagle-import:R-EU_R1206"
 			(exclude_from_sim no)
 			(in_bom yes)
 			(on_board yes)
@@ -3171,7 +3171,7 @@
 					(justify left bottom)
 				)
 			)
-			(property "Footprint" "blinkenrocket_cr2032:R1206"
+			(property "Footprint" "blinkenstar_cr2032:R1206"
 				(at 0 0 0)
 				(effects
 					(font
@@ -3294,7 +3294,7 @@
 			)
 			(embedded_fonts no)
 		)
-		(symbol "blinkenrocket_cr2032-eagle-import:SEGMENT_8X8_ROWCATHODEM12A881UR"
+		(symbol "blinkenstar_cr2032-eagle-import:SEGMENT_8X8_ROWCATHODEM12A881UR"
 			(exclude_from_sim no)
 			(in_bom yes)
 			(on_board yes)
@@ -3316,7 +3316,7 @@
 					(justify left bottom)
 				)
 			)
-			(property "Footprint" "blinkenrocket_cr2032:SEGMENT_BL-M12A881UR"
+			(property "Footprint" "blinkenstar_cr2032:SEGMENT_BL-M12A881UR"
 				(at 0 0 0)
 				(effects
 					(font
@@ -21543,7 +21543,7 @@
 		)
 	)
 	(symbol
-		(lib_id "blinkenrocket_cr2032-eagle-import:C-EUC1206")
+		(lib_id "blinkenstar_cr2032-eagle-import:C-EUC1206")
 		(at 205.74 154.94 0)
 		(unit 1)
 		(exclude_from_sim no)
@@ -21621,7 +21621,7 @@
 		)
 	)
 	(symbol
-		(lib_id "blinkenrocket_cr2032-eagle-import:R-EU_R1206")
+		(lib_id "blinkenstar_cr2032-eagle-import:R-EU_R1206")
 		(at 106.68 195.58 0)
 		(mirror y)
 		(unit 1)
@@ -22806,7 +22806,7 @@
 		)
 	)
 	(symbol
-		(lib_id "blinkenrocket_cr2032-eagle-import:SEGMENT_8X8_ROWCATHODEM12A881UR")
+		(lib_id "blinkenstar_cr2032-eagle-import:SEGMENT_8X8_ROWCATHODEM12A881UR")
 		(at 142.24 119.38 0)
 		(unit 1)
 		(exclude_from_sim no)
@@ -23357,7 +23357,7 @@
 		)
 	)
 	(symbol
-		(lib_id "blinkenrocket_cr2032-eagle-import:PINHD-1X04_2.54-S")
+		(lib_id "blinkenstar_cr2032-eagle-import:PINHD-1X04_2.54-S")
 		(at 307.34 106.68 0)
 		(mirror y)
 		(unit 1)
@@ -23500,7 +23500,7 @@
 		)
 	)
 	(symbol
-		(lib_id "blinkenrocket_cr2032-eagle-import:C-EUC1206")
+		(lib_id "blinkenstar_cr2032-eagle-import:C-EUC1206")
 		(at 127 195.58 90)
 		(unit 1)
 		(exclude_from_sim no)
@@ -24105,7 +24105,7 @@
 		)
 	)
 	(symbol
-		(lib_id "blinkenrocket_cr2032-eagle-import:R-EU_R1206")
+		(lib_id "blinkenstar_cr2032-eagle-import:R-EU_R1206")
 		(at 137.16 203.2 90)
 		(unit 1)
 		(exclude_from_sim no)
@@ -24183,7 +24183,7 @@
 		)
 	)
 	(symbol
-		(lib_id "blinkenrocket_cr2032-eagle-import:PINHD-1X04_2.54-S")
+		(lib_id "blinkenstar_cr2032-eagle-import:PINHD-1X04_2.54-S")
 		(at 302.26 106.68 0)
 		(unit 1)
 		(exclude_from_sim no)
@@ -24325,7 +24325,7 @@
 		)
 	)
 	(symbol
-		(lib_id "blinkenrocket_cr2032-eagle-import:R-EU_R1206")
+		(lib_id "blinkenstar_cr2032-eagle-import:R-EU_R1206")
 		(at 137.16 185.42 90)
 		(unit 1)
 		(exclude_from_sim no)
@@ -24403,7 +24403,7 @@
 		)
 	)
 	(symbol
-		(lib_id "blinkenrocket_cr2032-eagle-import:C-EUC1206")
+		(lib_id "blinkenstar_cr2032-eagle-import:C-EUC1206")
 		(at 147.32 203.2 0)
 		(unit 1)
 		(exclude_from_sim no)
@@ -24481,7 +24481,7 @@
 		)
 	)
 	(symbol
-		(lib_id "blinkenrocket_cr2032-eagle-import:AVR-ISP-6VERT")
+		(lib_id "blinkenstar_cr2032-eagle-import:AVR-ISP-6VERT")
 		(at 228.6 66.04 0)
 		(unit 1)
 		(exclude_from_sim no)

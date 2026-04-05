@@ -23,5 +23,6 @@ test('startup restores the first stored pattern instead of leaving the display d
     assert.match(receiverSource, /bool ModemReceiver::showStoredPattern\(uint8_t idx\)/)
     assert.match(receiverSource, /storage\.load\(idx, display_payload_buf\);/)
     assert.match(receiverSource, /display\.show\(&anim\);/)
-    assert.match(systemSource, /modemReceiver\.showStoredPattern\(0\)/)
+    assert.match(systemSource, /current_pattern_index_ = 0;/)
+    assert.match(systemSource, /modemReceiver\.showStoredPattern\(current_pattern_index_\)/)
 })
