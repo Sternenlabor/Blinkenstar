@@ -6,18 +6,64 @@
 
 ![Alt text](Blinkenstar_back.png?raw=true "Blinkenstar Back")
 
-## Hardware
+## Overview
 
-This repository contains schematics, board layout and the BOM
+This repository contains the Blinkenstar hardware design, AVR firmware, and Node-based bench tools used to validate audio transfer reception and stored playback on the board.
 
-## Firmware Builds
+## Docs
 
-The firmware now uses four named PlatformIO environments:
+- [Docs Index](./docs/README.md)
+- [Getting Started](./docs/getting-started.md)
+- [Firmware Guide](./docs/firmware.md)
+- [Board Usage](./docs/board-usage.md)
+- [Bench And Debug](./docs/bench-and-debug.md)
+- [Hardware Guide](./docs/hardware.md)
+- [Development Guide](./docs/development.md)
+
+## Quick Start
+
+Install dependencies and run the default checks:
+
+```bash
+npm install
+npm test
+```
+
+Build the main firmware:
+
+```bash
+cd firmware
+pio run -e release
+```
+
+## Firmware Environments
+
+The public PlatformIO environments are:
 
 - `release`: normal RX/store firmware for the board
 - `debugwire`: the same RX/store firmware, built for debugWIRE
 - `jp1debug`: RX diagnostic firmware with TX-only JP1 serial logs
 - `hwdiag`: button/display hardware diagnostic firmware
+
+See [Firmware Guide](./docs/firmware.md) for the current behavior and caveats of each environment.
+
+## Bench Commands
+
+Continuous sine-wave audio path check:
+
+```bash
+npm run tone:test
+```
+
+One-shot framed transfer playback:
+
+```bash
+npm run transfer:test
+```
+
+See [Bench And Debug](./docs/bench-and-debug.md) for JP1 wiring, diagnostic images, and recommended bring-up order.
+
+## JP1 Wiring
 
 JP1 serial wiring for `jp1debug`:
 
@@ -25,39 +71,4 @@ JP1 serial wiring for `jp1debug`:
 - `JP1 pin 2` (`E1`, `PC0`) is debug TX
 - `JP1 pin 4` is GND
 - Connect a USB-UART adapter `RX` to `JP1 pin 2`
-- The `release` build shows the normal scrolling boot/storage text again while keeping the RX/store path enabled and now uses the legacy modem timing from the original firmware
-- The `jp1debug` build still suppresses the scrolling boot text to keep more SRAM available, uses polling RX and leaves the PA3 front-end bias disabled for bench stability
-- `JP1_DEBUG_SILENT` can be enabled in `jp1debug` to keep the debug call sites compiled while muting the bit-banged JP1 TX path during bench isolation
-
-## Audio Test Tone
-
-Install the Node dependency once:
-
-```bash
-npm install
-```
-
-Start the continuous 1 kHz sine wave:
-
-```bash
-npm run tone:test
-```
-
-The tone plays through the default audio output until you stop it with `Ctrl+C`.
-
-This sine source only verifies the analog path into `PA0`. It does not produce
-modem frames by itself, so the receiver will not decode `START`/`PATTERN`
-markers from this signal alone.
-
-## Audio Transfer Test
-
-Play a one-shot transfer payload that mirrors the live editor upload logic:
-
-```bash
-npm run transfer:test
-```
-
-This sends a recognizable text pattern once and exits. The payload uses the
-same dual-format transfer framing as the live site, which makes it suitable for
-bench validation of the actual upload path rather than just analog tone
-presence.
+- Connect adapter `GND` to `JP1 pin 4`
