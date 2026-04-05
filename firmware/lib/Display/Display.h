@@ -39,6 +39,7 @@ struct DisplayState
     uint8_t indicator_frames;
     bool boot_message_active;
     bool animation_active;
+    bool animation_storage_backed;
     animation_t animation;
 };
 
@@ -81,6 +82,13 @@ public:
      * @param anim Animation descriptor to copy and display.
      */
     void show(const animation_t *anim);
+
+    /**
+     * Start showing an animation whose payload can be reloaded from EEPROM in 128-byte chunks.
+     *
+     * @param anim Animation descriptor to copy and display.
+     */
+    void showFromStorage(const animation_t *anim);
 
     /**
      * Start the built-in boot message streamed from PROGMEM.
@@ -136,15 +144,35 @@ public:
     void restoreState(const DisplayState &state);
 
 private:
+    /**
+     * Copy an animation descriptor into the active slot and initialize playback state.
+     *
+     * @param anim Animation descriptor to copy.
+     * @param storage_backed `true` when later payload chunks can be reloaded from EEPROM.
+     */
+    void startAnimation_(const animation_t *anim, bool storage_backed);
+
+    /**
+     * Ensure that the chunk containing the current payload byte is present in RAM.
+     */
+    void ensureStorageChunkLoaded_();
+
+    /**
+     * Return the byte offset of `str_pos` inside the currently loaded chunk.
+     *
+     * @returns Chunk-local byte offset.
+     */
+    uint8_t chunkOffset_() const;
+
     uint8_t active_col = 0;                                                 // Current column being multiplexed
     uint8_t update_cnt = 0;                                                 // Counter for animation timing
     uint8_t need_update = 0;                                                // Flag set when a new frame/scroll is needed
     uint8_t update_threshold = 0;                                           // How many column-cycles per animation step
     uint8_t disp_buf[8] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}; // Column data buffer
-    uint8_t str_pos = 0;                                                    // Position index within animation data
-    uint8_t str_chunk = 0;                                                  // For multi-chunk animations (unused here)
+    uint16_t str_pos = 0;                                                   // Position index within animation data
+    uint8_t str_chunk = 0;                                                  // Active 128-byte EEPROM chunk for storage-backed playback
     int8_t char_pos = -1;                                                   // For text animations (start at -1)
-    uint8_t repeat_cnt = 0;                                                 // Repeat counter (unused in this port)
+    uint8_t repeat_cnt = 0;                                                 // Repeat counter reserved for future upstream parity
     enum AnimationStatus : uint8_t
     {
         RUNNING,
@@ -155,6 +183,7 @@ private:
     animation_t *current_anim = nullptr;
     animation_t current_anim_copy = {};
     bool current_anim_progmem = false;
+    bool current_anim_storage_backed = false;
 
     // Indicator overlay state
     bool indicator_active = false;

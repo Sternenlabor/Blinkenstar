@@ -43,6 +43,7 @@ test('restoring a saved boot-message state resumes the boot message instead of f
 
     assert.match(displayHeader, /bool boot_message_active;/)
     assert.match(displayHeader, /bool animation_active;/)
+    assert.match(displayHeader, /bool animation_storage_backed;/)
     assert.match(displayHeader, /animation_t animation;/)
     assert.match(displayHeader, /void freezeState\(const DisplayState &state\);/)
     assert.match(displayHeader, /animation_t current_anim_copy = \{\};/)
@@ -51,5 +52,6 @@ test('restoring a saved boot-message state resumes the boot message instead of f
     assert.match(displaySource, /state\.animation_active = current_anim != nullptr;/)
     assert.match(displaySource, /state\.animation = current_anim_copy;/)
     assert.match(displaySource, /if \(state\.boot_message_active\)\s*\{\s*showBootMessage\(\);/s)
-    assert.match(displaySource, /if \(state\.animation_active\)\s*\{\s*show\(&state\.animation\);/s)
+    assert.match(displaySource, /if \(state\.animation_active\)\s*\{\s*if \(state\.animation_storage_backed\)\s*\{\s*showFromStorage\(&state\.animation\);/s)
+    assert.match(displaySource, /else\s*\{\s*show\(&state\.animation\);/s)
 })

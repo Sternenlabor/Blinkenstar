@@ -32,6 +32,49 @@ cd firmware
 pio run -e release -t upload
 ```
 
+## Maintained Flash Script
+
+The maintained flashing helper lives at [`firmware/scripts/flash.sh`](../firmware/scripts/flash.sh).
+
+It replaces the legacy `_old` helper and does three things in one step:
+
+1. builds the selected PlatformIO environment
+2. copies locale-tagged artifacts into [`firmware/dist/`](../firmware/dist/)
+3. flashes the resulting `.hex` and writes the expected ATtiny88 fuse values
+
+Example:
+
+```bash
+cd firmware
+./scripts/flash.sh release
+./scripts/flash.sh release de
+```
+
+Defaults:
+
+- environment: `release`
+- locale: `en`
+- MCU: `attiny88`
+- programmer: `atmelice_isp`
+- port: `usb`
+
+You can override the programmer-related settings with environment variables such as `PROGRAMMER`, `PORT`, or `MCU`.
+
+Artifact naming:
+
+- default English builds are copied as `firmware_en.elf` and `firmware_en.hex`
+- German builds add `LANG_DE` and are copied as `firmware_de.elf` and `firmware_de.hex`
+
+## Fuse Note
+
+The flash helper also writes the expected fuse values during programming:
+
+- `lfuse = 0xee`
+- `hfuse = 0xdf`
+- `efuse = 0xff`
+
+That note previously lived in the legacy `_old/README.md`; it is now maintained here with the current flashing workflow.
+
 ## Runtime Architecture
 
 The firmware is split into small modules in [`firmware/lib/`](../firmware/lib/):

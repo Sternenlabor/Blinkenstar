@@ -14,9 +14,9 @@ const receiverSourcePath = path.join(repoRoot, 'firmware', 'lib', 'Modem', 'Rece
 test('receiver shows the upstream flashing pattern while a frame is being received', () => {
     const receiverSource = fs.readFileSync(receiverSourcePath, 'utf8')
 
-    assert.match(receiverSource, /static uint8_t flashing_pattern_buf\[sizeof\(flashingPattern\)\];/)
+    assert.doesNotMatch(receiverSource, /static uint8_t flashing_pattern_buf\[sizeof\(flashingPattern\)\];/)
     assert.match(receiverSource, /static void showTransferFlashPattern\(\)/)
-    assert.match(receiverSource, /for \(uint8_t i = 0; i < sizeof\(flashingPattern\); \+\+i\)\s*\{\s*flashing_pattern_buf\[i\] = pgm_read_byte\(flashingPattern \+ i\);/s)
-    assert.match(receiverSource, /showPayloadBuffer\(flashing_pattern_buf\);/)
+    assert.match(receiverSource, /for \(uint8_t i = 0; i < sizeof\(flashingPattern\); \+\+i\)\s*\{\s*display_payload_buf\[i\] = pgm_read_byte\(flashingPattern \+ i\);/s)
+    assert.match(receiverSource, /showPayloadBuffer\(display_payload_buf\);/)
     assert.match(receiverSource, /storage\.reset\(\);[\s\S]*?showTransferFlashPattern\(\);/s)
 })

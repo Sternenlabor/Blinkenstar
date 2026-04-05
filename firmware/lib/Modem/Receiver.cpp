@@ -37,15 +37,15 @@ inline void logRxLength(uint16_t length)
 
 #if !defined(RX_NO_STORAGE)
 static uint8_t display_payload_buf[132];
-static uint8_t flashing_pattern_buf[sizeof(flashingPattern)];
 
 /**
  * Decode a stored payload buffer into a temporary animation descriptor and show it.
  *
  * @param payload Stored payload buffer beginning with the four-byte header.
+ * @param storage_backed `true` when later payload chunks can be reloaded from EEPROM.
  * @returns `true` when the payload looks valid enough to display.
  */
-static bool showPayloadBuffer(uint8_t *payload)
+static bool showPayloadBuffer(uint8_t *payload, bool storage_backed = false)
 {
     animation_t anim;
     uint8_t hdr0 = payload[0];
@@ -60,10 +60,6 @@ static bool showPayloadBuffer(uint8_t *payload)
     if (anim.length == 0)
     {
         return false;
-    }
-    if (anim.length > 128)
-    {
-        anim.length = 128;
     }
 
     uint8_t p2 = payload[2];
@@ -83,7 +79,14 @@ static bool showPayloadBuffer(uint8_t *payload)
         anim.repeat = (p3 & 0x0F);
     }
     anim.data = payload + 4;
-    display.show(&anim);
+    if (storage_backed)
+    {
+        display.showFromStorage(&anim);
+    }
+    else
+    {
+        display.show(&anim);
+    }
     return true;
 }
 
@@ -92,13 +95,13 @@ static bool showPayloadBuffer(uint8_t *payload)
  */
 static void showTransferFlashPattern()
 {
-    // Copy the small built-in receive cue into RAM so it can reuse the normal display payload path.
+    // Reuse the existing display payload buffer so the receive cue does not permanently consume extra SRAM.
     for (uint8_t i = 0; i < sizeof(flashingPattern); ++i)
     {
-        flashing_pattern_buf[i] = pgm_read_byte(flashingPattern + i);
+        display_payload_buf[i] = pgm_read_byte(flashingPattern + i);
     }
 
-    showPayloadBuffer(flashing_pattern_buf);
+    showPayloadBuffer(display_payload_buf);
 }
 #endif
 #ifdef DIAG_RX
@@ -151,7 +154,7 @@ bool ModemReceiver::showStoredPattern(uint8_t idx)
     }
 
     storage.load(idx, display_payload_buf);
-    return showPayloadBuffer(display_payload_buf);
+    return showPayloadBuffer(display_payload_buf, true);
 }
 #endif
 
@@ -304,7 +307,7 @@ void ModemReceiver::process()
 
                 // Reload the just-written payload so the user sees exactly what landed in EEPROM.
                 storage.load(0, display_payload_buf);
-                bool shown = showPayloadBuffer(display_payload_buf);
+                bool shown = showPayloadBuffer(display_payload_buf, true);
                 diaglog::captureLoaded(display_payload_buf, storage.numPatterns(), shown);
 #elif defined(RX_BUFFERED_STORE)
                 // Flush buffered pages to EEPROM now
@@ -336,7 +339,7 @@ void ModemReceiver::process()
 
                 // Reload the just-written payload so the display path matches the persisted bytes.
                 storage.load(0, display_payload_buf);
-                bool shown = showPayloadBuffer(display_payload_buf);
+                bool shown = showPayloadBuffer(display_payload_buf, true);
                 diaglog::captureLoaded(display_payload_buf, storage.numPatterns(), shown);
 #else
                 state_ = START1;

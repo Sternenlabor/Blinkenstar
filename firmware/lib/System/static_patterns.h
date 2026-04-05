@@ -52,22 +52,22 @@ const uint8_t PROGMEM flashingPattern[] = {
 
 #ifdef LANG_DE
 // emptyPattern: TEXT type, length = 40 chars
-// Speed = 42 (250 - 0xD0), No delay
+// Speed = 26 (250 - 0xE0), No delay
 // Character data: version and status message
 const uint8_t PROGMEM emptyPattern[] = {
 	0x10, 0x28,
-	0xC0, 0x00,
+	0xE0, 0x00,
 	' ', 1, 'v', FW_REV_MAJOR + '0', '.', FW_REV_MINOR + '0', ' ', '-',
 	' ', 'B', 'l', 'i', 'n', 'k', 'e', 'n', 's', 't', 'a', 'r',
 	' ', 'S', 'p', 'e', 'i', 'c', 'h', 'e', 'r', ' ', 'i', 's', 't',
 	' ', 'l', 'e', 'e', 'r', ' '};
 #else
 // emptyPattern: TEXT type, length = 38 chars
-// Speed, No delay
+// Speed = 26 (250 - 0xE0), No delay
 // Character data: version and status message
 const uint8_t PROGMEM emptyPattern[] = {
 	0x10, 0x26,
-	0x96, 0x00,   // 250 - 0x96 (150) = ~100 ms per scroll step
+	0xE0, 0x00,
 	' ', 1, 'v', FW_REV_MAJOR + '0', '.', FW_REV_MINOR + '0', ' ', '-',
 	' ', 'B', 'l', 'i', 'n', 'k', 'e', 'n', 's', 't', 'a', 'r',
 	' ', 'S', 't', 'o', 'r', 'a', 'g', 'e', ' ', 'i', 's',
@@ -80,7 +80,7 @@ const uint8_t PROGMEM emptyPattern[] = {
 // Character data: transmission error message
 const uint8_t PROGMEM timeoutPattern[] = {
 	0x10, 0x16,
-	0xC0, 0x00,
+	0xE0, 0x00,
 	' ', 2, ' ', 'U', 'e', 'b', 'e', 'r', 't', 'r', 'a', 'g', 'u', 'n', 'g',
 	's', 'f', 'e', 'h', 'l', 'e', 'r'};
 #else

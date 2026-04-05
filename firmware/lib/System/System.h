@@ -14,6 +14,9 @@
 #ifndef MODEM_BOOT_DELAY_MS
 #define MODEM_BOOT_DELAY_MS 1000UL
 #endif
+#ifndef BUTTON_BROWSE_COOLDOWN_MS
+#define BUTTON_BROWSE_COOLDOWN_MS 75UL
+#endif
 
 class System
 {

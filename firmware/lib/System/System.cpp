@@ -385,7 +385,7 @@ void System::loop()
 #ifndef RX_NO_STORAGE
             // A receive-mode toggle is not also a browse action on release.
             button_mask_ = BUTTON_NONE;
-            button_debounce_until_ms_ = loop_now + 25;
+            button_debounce_until_ms_ = loop_now + BUTTON_BROWSE_COOLDOWN_MS;
 #endif
         }
     }
@@ -452,10 +452,16 @@ void System::loop()
          */
         if (!button1_is_low() && !button2_is_low())
         {
-            storage.enable();
-
             if (button_mask_ == BUTTON_NEXT)
             {
+                /*
+                 * Only touch the EEPROM bus when a real browse action was
+                 * released. Long stored animations now stream later chunks
+                 * from the main-loop display update path, so unconditional
+                 * idle I2C reads here can corrupt the chunk fetch exactly at
+                 * the 128-byte boundary.
+                 */
+                storage.enable();
                 if (storage.hasData())
                 {
                     current_pattern_index_ = (current_pattern_index_ + 1) % storage.numPatterns();
@@ -466,10 +472,12 @@ void System::loop()
                     current_pattern_index_ = 0;
                     showEmptyStorageMessage();
                 }
-                button_debounce_until_ms_ = loop_now + 25;
+                button_debounce_until_ms_ = loop_now + BUTTON_BROWSE_COOLDOWN_MS;
             }
             else if (button_mask_ == BUTTON_PREVIOUS)
             {
+                // Mirror the upstream browse flow without continuous idle bus traffic.
+                storage.enable();
                 if (storage.hasData())
                 {
                     if (current_pattern_index_ == 0)
@@ -487,7 +495,7 @@ void System::loop()
                     current_pattern_index_ = 0;
                     showEmptyStorageMessage();
                 }
-                button_debounce_until_ms_ = loop_now + 25;
+                button_debounce_until_ms_ = loop_now + BUTTON_BROWSE_COOLDOWN_MS;
             }
 
             button_mask_ = BUTTON_NONE;
@@ -532,6 +540,7 @@ void System::loop()
         if (both_pressed_stable < BOTH_STABLE_THRESHOLD)
         {
             both_pressed_stable++;
+            display.update();
             return; // don't start counting toward shutdown yet
         }
 
@@ -557,6 +566,13 @@ void System::loop()
         both_pressed_stable = 0;
         want_shutdown = 0;
     }
+
+    /*
+     * Match the upstream execution model: the timer ISR only requests an
+     * update, while the main loop advances animation state and performs any
+     * EEPROM chunk loads outside interrupt context.
+     */
+    display.update();
 }
 
 void System::shutdown()
@@ -575,12 +591,14 @@ void System::shutdown()
     // Wait until buttons are released
     while (button1_is_low() || button2_is_low())
     {
+        display.update();
         delay(1);
     }
 
     // Debounce the buttons after the animation has completed.
     for (i = 0; i < 100; i++)
     {
+        display.update();
         delay(1);
     }
 
@@ -612,12 +630,14 @@ void System::shutdown()
     // Wait for buttons release post-wakeup
     while (button1_is_low() || button2_is_low())
     {
+        display.update();
         delay(1);
     }
 
     // Debounce again
     for (i = 0; i < 100; i++)
     {
+        display.update();
         delay(1);
     }
 

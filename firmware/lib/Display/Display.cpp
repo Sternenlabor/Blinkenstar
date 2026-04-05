@@ -1,4 +1,5 @@
 #include "Display.h"
+#include "Storage.h"
 #include "Timer.h"
 #include <avr/pgmspace.h>
 #include "font.h"
@@ -19,6 +20,53 @@ static void onTimerTick()
 Display::Display()
 {
     // Constructor: initial values are already set by in-class initializers
+}
+
+void Display::startAnimation_(const animation_t *anim, bool storage_backed)
+{
+    current_anim_copy = *anim;
+    current_anim = &current_anim_copy;
+    current_anim_progmem = false;
+    current_anim_storage_backed = storage_backed;
+    reset();
+    update_threshold = current_anim->speed;
+
+    if (current_anim->direction == 1 && current_anim->length > 0)
+    {
+        str_pos = current_anim->length - 1;
+    }
+
+    // Render the first frame immediately so the caller does not need to wait
+    // for the next timer threshold before seeing the new content.
+    need_update = 1;
+    update();
+}
+
+void Display::ensureStorageChunkLoaded_()
+{
+    if (current_anim_storage_backed && current_anim->length > 128)
+    {
+        uint8_t desired_chunk = str_pos / 128;
+
+        if (desired_chunk != str_chunk)
+        {
+            str_chunk = desired_chunk;
+            // Storage::load() already selected the active pattern and latched
+            // its page offset, so later chunk loads can stream the rest of the
+            // payload into the same 128-byte RAM window.
+            storage.loadChunk(str_chunk, current_anim->data);
+        }
+    }
+}
+
+uint8_t Display::chunkOffset_() const
+{
+    if (current_anim_storage_backed && current_anim->length > 128)
+    {
+        return str_pos % 128;
+    }
+
+    return str_pos;
 }
 
 // Enable display hardware and timer interrupt
@@ -76,7 +124,6 @@ void Display::multiplex()
         {
             update_cnt = 0;
             need_update = 1;
-            update();
         }
     }
 }
@@ -153,9 +200,11 @@ void Display::snapshotState(DisplayState &state) const
     state.indicator_frames = indicator_frames;
     state.boot_message_active = current_anim == nullptr && current_anim_progmem;
     state.animation_active = current_anim != nullptr;
+    state.animation_storage_backed = false;
     if (state.animation_active)
     {
         state.animation = current_anim_copy;
+        state.animation_storage_backed = current_anim_storage_backed;
     }
 }
 
@@ -175,6 +224,7 @@ void Display::freezeState(const DisplayState &state)
     // temporary shutdown animation from continuing to run after wake.
     current_anim = nullptr;
     current_anim_progmem = false;
+    current_anim_storage_backed = false;
     update_cnt = 0;
     need_update = 0;
     update_threshold = 0;
@@ -199,7 +249,14 @@ void Display::restoreState(const DisplayState &state)
 
     if (state.animation_active)
     {
-        show(&state.animation);
+        if (state.animation_storage_backed)
+        {
+            showFromStorage(&state.animation);
+        }
+        else
+        {
+            show(&state.animation);
+        }
         indicator_active = state.indicator_active;
         indicator_col = state.indicator_col;
         indicator_row = state.indicator_row;
@@ -213,28 +270,19 @@ void Display::restoreState(const DisplayState &state)
 // Start a new animation
 void Display::show(const animation_t *anim)
 {
-    current_anim_copy = *anim;
-    current_anim = &current_anim_copy;
-    current_anim_progmem = false;
-    reset();
-    update_threshold = current_anim->speed;
-    if (current_anim->direction == 1)
-    {
-        // If reverse direction, start at end for TEXT or FRAMES
-        if (current_anim->length > 0)
-        {
-            str_pos = current_anim->length - 1;
-        }
-    }
-    // Trigger an immediate render of the first frame
-    need_update = 1;
-    update();
+    startAnimation_(anim, false);
+}
+
+void Display::showFromStorage(const animation_t *anim)
+{
+    startAnimation_(anim, true);
 }
 
 void Display::showBootMessage()
 {
     current_anim = nullptr;
     current_anim_progmem = true;
+    current_anim_storage_backed = false;
     reset();
 
     const uint8_t p2 = pgm_read_byte(emptyPattern + 2);
@@ -322,10 +370,13 @@ void Display::update()
     {
         if (current_anim->type == AnimationType::FRAMES)
         {
+            ensureStorageChunkLoaded_();
+            uint8_t chunk_offset = chunkOffset_();
+
             // Copy one frame (8 columns) into disp_buf
             for (uint8_t i = 0; i < 8; i++)
             {
-                disp_buf[i] = ~(current_anim->data[str_pos + i]); // invert for active-low
+                disp_buf[i] = ~(current_anim->data[chunk_offset + i]); // invert for active-low
             }
             str_pos += 8;
             // Loop back when reaching end of animation
@@ -336,6 +387,9 @@ void Display::update()
         }
         else if (current_anim->type == AnimationType::TEXT)
         {
+            ensureStorageChunkLoaded_();
+            uint8_t chunk_offset = chunkOffset_();
+
             // Scroll display contents
             if (current_anim->direction == 0)
             {
@@ -355,7 +409,7 @@ void Display::update()
             }
 
             // Load current character glyph from PROGMEM
-            const uint8_t *glyph_addr = (const uint8_t *)pgm_read_ptr(&font[current_anim->data[str_pos]]);
+            const uint8_t *glyph_addr = (const uint8_t *)pgm_read_ptr(&font[current_anim->data[chunk_offset]]);
             uint8_t glyph_len = pgm_read_byte(&glyph_addr[0]);
             char_pos++;
 
