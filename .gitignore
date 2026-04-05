@@ -36,6 +36,7 @@ eagle.epf
 *.eps
 
 **/.DS_Store
+node_modules/
 
 hardware/Blinkenstar/_autosave-Blinkenstar.kicad_pcb
 
