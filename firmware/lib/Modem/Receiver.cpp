@@ -7,6 +7,17 @@
 ModemReceiver modemReceiver;
 
 static bool storage_ready = false;
+
+/**
+ * Copy a built-in payload from PROGMEM into RAM and display it.
+ *
+ * @param pattern PROGMEM pattern beginning with the four-byte header.
+ * @param buffer Destination buffer with room for `length` bytes.
+ * @param length Number of bytes to copy from PROGMEM.
+ * @returns `true` when the payload was accepted for display.
+ */
+static bool showProgmemPayload(const uint8_t *pattern, uint8_t *buffer, uint8_t length);
+
 #if defined(JP1_DEBUG_SERIAL) && defined(JP1_DEBUG_RX_EVENTS)
 namespace
 {
@@ -34,9 +45,6 @@ inline void logRxLength(uint16_t length)
 }
 } // namespace
 #endif
-
-#if !defined(RX_NO_STORAGE)
-static uint8_t display_payload_buf[132];
 
 /**
  * Decode a stored payload buffer into a temporary animation descriptor and show it.
@@ -90,6 +98,9 @@ static bool showPayloadBuffer(uint8_t *payload, bool storage_backed = false)
     return true;
 }
 
+#if !defined(RX_NO_STORAGE)
+static uint8_t display_payload_buf[132];
+
 /**
  * Show the upstream receive-start flashing animation from PROGMEM.
  */
@@ -104,6 +115,33 @@ static void showTransferFlashPattern()
     showPayloadBuffer(display_payload_buf);
 }
 #endif
+
+#if defined(RX_NO_STORAGE)
+static uint8_t timeout_payload_buf[sizeof(timeoutPattern)];
+#endif
+
+/**
+ * Show the upstream interrupted-transfer timeout message.
+ */
+static void showTimeoutPattern()
+{
+#if defined(RX_NO_STORAGE)
+    showProgmemPayload(timeoutPattern, timeout_payload_buf, sizeof(timeoutPattern));
+#else
+    showProgmemPayload(timeoutPattern, display_payload_buf, sizeof(timeoutPattern));
+#endif
+}
+
+static bool showProgmemPayload(const uint8_t *pattern, uint8_t *buffer, uint8_t length)
+{
+    for (uint8_t i = 0; i < length; ++i)
+    {
+        buffer[i] = pgm_read_byte(pattern + i);
+    }
+
+    return showPayloadBuffer(buffer);
+}
+
 #ifdef DIAG_RX
 static uint8_t diag_hex[40];
 static uint8_t diag_hex_len = 0;
@@ -124,6 +162,8 @@ void ModemReceiver::begin()
     diaglog::setState(static_cast<uint8_t>(state_));
     rx_pos_ = 0;
     remaining_ = 0;
+    frame_timeout_at_ms_ = 0;
+    frame_complete_ = false;
     frame_payload_complete_ = false;
     diag_start_count_ = 0;
     diag_start_capture_ = false;
@@ -135,6 +175,10 @@ void ModemReceiver::begin()
     diag_showing_hex = false;
     diag_raw_len = 0;
     diag_showing_raw = false;
+#endif
+#ifdef RX_BUFFERED_STORE
+    store_pages_used_ = 0;
+    store_partial_len_ = 0;
 #endif
 }
 
@@ -158,6 +202,48 @@ bool ModemReceiver::showStoredPattern(uint8_t idx)
 }
 #endif
 
+/**
+ * Refresh the receive watchdog deadline after one more framed byte arrives.
+ *
+ * @param now_ms Current `millis()` value.
+ */
+void ModemReceiver::armFrameTimeout_(unsigned long now_ms)
+{
+    frame_timeout_at_ms_ = now_ms + FRAME_TIMEOUT_MS;
+}
+
+/**
+ * Abort a stalled transfer and restore the upstream timeout message.
+ */
+void ModemReceiver::handleTimeout_()
+{
+    state_ = START1;
+    diaglog::setState(static_cast<uint8_t>(state_));
+    rx_pos_ = 0;
+    remaining_ = 0;
+    frame_timeout_at_ms_ = 0;
+    frame_complete_ = false;
+    frame_payload_complete_ = false;
+    diag_start_count_ = 0;
+    diag_start_capture_ = false;
+    diag_length_ = 0;
+    fecModem.clear();
+    g_modem.clearRecentRaw();
+    showTimeoutPattern();
+    debuglog::println("RX TIMEOUT");
+#ifdef DIAG_RX
+    diag_hex_len = 0;
+    diag_capture_count = 0;
+    diag_showing_hex = false;
+    diag_raw_len = 0;
+    diag_showing_raw = false;
+#endif
+#ifdef RX_BUFFERED_STORE
+    store_pages_used_ = 0;
+    store_partial_len_ = 0;
+#endif
+}
+
 void ModemReceiver::process()
 {
     // Only poll the ADC in explicit polling builds. In ISR builds this would
@@ -166,10 +252,22 @@ void ModemReceiver::process()
     g_modem.poll(16);
 #endif
 
+    unsigned long now_ms = millis();
+    if (state_ != START1 && frame_timeout_at_ms_ != 0 && (long)(now_ms - frame_timeout_at_ms_) >= 0)
+    {
+        handleTimeout_();
+        return;
+    }
+
     uint8_t budget = 32;
     while (budget-- && fecModem.available())
     {
         uint8_t b = fecModem.read();
+        now_ms = millis();
+        if (state_ >= NEXT_BLOCK)
+        {
+            armFrameTimeout_(now_ms);
+        }
         // Blink top-left pixel for 2 frames to indicate byte arrival
         display.setIndicator(0, 0, 2);
         // Record last 8 decoded bytes for diagnostics
@@ -233,6 +331,7 @@ void ModemReceiver::process()
             {
                 state_ = NEXT_BLOCK;
                 diaglog::setState(static_cast<uint8_t>(state_));
+                armFrameTimeout_(now_ms);
                 frame_payload_complete_ = false;
                 diaglog::markStart();
                 diag_events_ |= DIAG_EVENT_START;
@@ -250,6 +349,10 @@ void ModemReceiver::process()
                 }
                 storage.reset();
                 showTransferFlashPattern();
+#endif
+#ifdef RX_BUFFERED_STORE
+                store_pages_used_ = 0;
+                store_partial_len_ = 0;
 #endif
 #ifdef DIAG_RX
                 diag_hex_len = 0;
@@ -283,6 +386,7 @@ void ModemReceiver::process()
                     diaglog::setState(static_cast<uint8_t>(state_));
                     rx_pos_ = 0;
                     remaining_ = 0;
+                    frame_timeout_at_ms_ = 0;
                     fecModem.clear();
                     break;
                 }
@@ -296,6 +400,7 @@ void ModemReceiver::process()
                 storage.sync();
                 state_ = START1;
                 diaglog::setState(static_cast<uint8_t>(state_));
+                frame_timeout_at_ms_ = 0;
                 frame_payload_complete_ = false;
                 fecModem.clear();
                 frame_complete_ = true;
@@ -328,6 +433,7 @@ void ModemReceiver::process()
                 storage.sync();
                 state_ = START1;
                 diaglog::setState(static_cast<uint8_t>(state_));
+                frame_timeout_at_ms_ = 0;
                 frame_payload_complete_ = false;
                 fecModem.clear();
                 frame_complete_ = true;
@@ -341,9 +447,12 @@ void ModemReceiver::process()
                 storage.load(0, display_payload_buf);
                 bool shown = showPayloadBuffer(display_payload_buf, true);
                 diaglog::captureLoaded(display_payload_buf, storage.numPatterns(), shown);
+                store_pages_used_ = 0;
+                store_partial_len_ = 0;
 #else
                 state_ = START1;
                 diaglog::setState(static_cast<uint8_t>(state_));
+                frame_timeout_at_ms_ = 0;
                 frame_payload_complete_ = false;
                 fecModem.clear();
                 frame_complete_ = true;
@@ -375,6 +484,7 @@ void ModemReceiver::process()
                 // Resynchronize fully after a broken post-start marker so the next real frame can reacquire START1.
                 state_ = START1;
                 diaglog::setState(static_cast<uint8_t>(state_));
+                frame_timeout_at_ms_ = 0;
             }
             break;
         case PATTERN2:
@@ -394,6 +504,7 @@ void ModemReceiver::process()
                 // A broken PATTERN marker means we lost framing, so restart from START1 like the original firmware.
                 state_ = START1;
                 diaglog::setState(static_cast<uint8_t>(state_));
+                frame_timeout_at_ms_ = 0;
             }
             break;
         case HEADER1:
@@ -509,6 +620,7 @@ void ModemReceiver::process()
         default:
             state_ = START1;
             diaglog::setState(static_cast<uint8_t>(state_));
+            frame_timeout_at_ms_ = 0;
             break;
         }
     }

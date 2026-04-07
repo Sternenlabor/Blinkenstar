@@ -47,11 +47,6 @@ class Display
 {
 public:
     /**
-     * Construct the display driver with its default off-state buffer.
-     */
-    Display();
-
-    /**
      * Enable matrix GPIOs and start the multiplex timer.
      */
     void enable();
@@ -123,6 +118,13 @@ public:
     void clearIndicator();
 
     /**
+     * Return and clear a pending autoskip request raised by finite-repeat playback.
+     *
+     * @returns `true` once after an animation reaches its repeat limit.
+     */
+    bool consumeAnimationRepeatRequest();
+
+    /**
      * Capture the visible display state for later restoration.
      *
      * @param state Destination snapshot.
@@ -164,32 +166,45 @@ private:
      */
     uint8_t chunkOffset_() const;
 
-    uint8_t active_col = 0;                                                 // Current column being multiplexed
-    uint8_t update_cnt = 0;                                                 // Counter for animation timing
-    uint8_t need_update = 0;                                                // Flag set when a new frame/scroll is needed
-    uint8_t update_threshold = 0;                                           // How many column-cycles per animation step
-    uint8_t disp_buf[8] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}; // Column data buffer
-    uint16_t str_pos = 0;                                                   // Position index within animation data
-    uint8_t str_chunk = 0;                                                  // Active 128-byte EEPROM chunk for storage-backed playback
-    int8_t char_pos = -1;                                                   // For text animations (start at -1)
-    uint8_t repeat_cnt = 0;                                                 // Repeat counter reserved for future upstream parity
+    /**
+     * Rewind the current animation to its next-cycle start position.
+     */
+    void rewindAnimationCycle_();
+
+    /**
+     * Apply the upstream end-of-animation pause and repeat handling.
+     *
+     * @returns `true` when the current cycle autoskipped to another pattern.
+     */
+    bool finishAnimationCycle_();
+
+    uint8_t active_col;       // Current column being multiplexed
+    uint8_t update_cnt;       // Counter for animation timing
+    uint8_t need_update;      // Flag set when a new frame/scroll is needed
+    uint8_t update_threshold; // How many column-cycles per animation step
+    uint8_t disp_buf[8];      // Column data buffer
+    uint16_t str_pos;         // Position index within animation data
+    uint8_t str_chunk;        // Active 128-byte EEPROM chunk for storage-backed playback
+    int8_t char_pos;          // For text animations (start at -1)
+    uint8_t repeat_cnt;       // Upstream-compatible finite-repeat counter
     enum AnimationStatus : uint8_t
     {
         RUNNING,
         SCROLL_BACK,
         PAUSED
     };
-    AnimationStatus status = RUNNING; // Current animation status
-    animation_t *current_anim = nullptr;
-    animation_t current_anim_copy = {};
-    bool current_anim_progmem = false;
-    bool current_anim_storage_backed = false;
+    AnimationStatus status; // Current animation status
+    animation_t *current_anim;
+    animation_t current_anim_copy;
+    bool current_anim_progmem;
+    bool current_anim_storage_backed;
+    bool repeat_advance_requested_;
 
     // Indicator overlay state
-    bool indicator_active = false;
-    uint8_t indicator_col = 0;
-    uint8_t indicator_row = 0;
-    uint8_t indicator_frames = 0; // decremented once per full refresh
+    bool indicator_active;
+    uint8_t indicator_col;
+    uint8_t indicator_row;
+    uint8_t indicator_frames; // decremented once per full refresh
 };
 
 extern Display display;

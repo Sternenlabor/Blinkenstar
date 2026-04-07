@@ -39,7 +39,7 @@ test('system advances and rewinds stored patterns with wraparound on button rele
     assert.match(systemSource, /else if \(button_mask_ == BUTTON_PREVIOUS\)\s*\{\s*\/\/ Mirror the upstream browse flow without continuous idle bus traffic\.\s*storage\.enable\(\);/s)
     assert.match(systemSource, /button_debounce_until_ms_ = loop_now \+ BUTTON_BROWSE_COOLDOWN_MS;/)
     assert.match(systemSource, /button_mask_ = BUTTON_BROWSE_LOCKED;/)
-    assert.match(systemSource, /current_pattern_index_ = \(current_pattern_index_ \+ 1\) % storage\.numPatterns\(\);/)
+    assert.match(systemSource, /const uint8_t pattern_count = storage\.numPatterns\(\);\s*\+\+current_pattern_index_;\s*if \(current_pattern_index_ >= pattern_count\)\s*\{\s*current_pattern_index_ = 0;\s*\}/s)
     assert.match(systemSource, /if \(current_pattern_index_ == 0\)\s*\{\s*current_pattern_index_ = storage\.numPatterns\(\) - 1;/)
     assert.match(systemSource, /modemReceiver\.showStoredPattern\(current_pattern_index_\)/)
     assert.match(systemSource, /current_pattern_index_ = 0;/)

@@ -15,7 +15,11 @@ When a valid transfer starts:
 - transfer activity is still tracked internally through the receiver path
 - when the frame completes successfully, the new content is saved and then shown
 
-If a frame does not complete, the existing stored content remains authoritative.
+If a frame does not complete:
+
+- after about four seconds without more framed data, the receiver abandons the partial transfer
+- the matrix shows the built-in transmission error message
+- the existing stored content remains authoritative until the next successful transfer or manual browse action
 
 ## Browsing Stored Content
 
@@ -24,6 +28,7 @@ With stored content present:
 - press and release the left button to move forward through stored patterns
 - press and release the right button to move backward through stored patterns
 - browsing wraps around at the ends
+- animations with a finite repeat count now pause and auto-advance after their encoded repeat limit is reached
 
 The browse action happens on release, which avoids fighting the dual-button shutdown gesture.
 

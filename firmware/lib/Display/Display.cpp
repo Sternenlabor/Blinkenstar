@@ -17,11 +17,6 @@ static void onTimerTick()
     display.multiplex();
 }
 
-Display::Display()
-{
-    // Constructor: initial values are already set by in-class initializers
-}
-
 void Display::startAnimation_(const animation_t *anim, bool storage_backed)
 {
     current_anim_copy = *anim;
@@ -69,12 +64,79 @@ uint8_t Display::chunkOffset_() const
     return str_pos;
 }
 
+/**
+ * Rewind the active animation to the first frame or to the last text glyph for rightward scroll.
+ */
+void Display::rewindAnimationCycle_()
+{
+    if (!current_anim)
+    {
+        return;
+    }
+
+    if (current_anim->type == AnimationType::TEXT && current_anim->direction == 1)
+    {
+        str_pos = current_anim->length - 1;
+    }
+    else
+    {
+        str_pos = 0;
+    }
+
+    update_threshold = current_anim->speed;
+
+    if (current_anim_storage_backed && current_anim->length > 128)
+    {
+        str_chunk = str_pos / 128;
+        storage.loadChunk(str_chunk, current_anim->data);
+    }
+}
+
+/**
+ * Apply the upstream pause and finite-repeat behavior after one full animation cycle completes.
+ *
+ * @returns `true` when playback autoskipped to a different stored pattern.
+ */
+bool Display::finishAnimationCycle_()
+{
+    if (!current_anim)
+    {
+        return false;
+    }
+
+    if (current_anim->delay > 0)
+    {
+        status = PAUSED;
+        update_threshold = 244;
+        str_pos = 0;
+    }
+    else
+    {
+        rewindAnimationCycle_();
+    }
+
+    if (current_anim->repeat)
+    {
+        if (++repeat_cnt == current_anim->repeat)
+        {
+            repeat_advance_requested_ = true;
+            return true;
+        }
+    }
+
+    return false;
+}
+
 // Enable display hardware and timer interrupt
 void Display::enable()
 {
     // Configure ports
     DDRB = 0xFF; // Columns output
     DDRD = 0xFF; // Rows output
+
+    // Reinitialize the backing state so the global display object can remain
+    // zero-initialized in SRAM without paying for a startup constructor.
+    reset();
 
     // Match the upstream multiplex cadence: one column every 256 us,
     // which yields a full 8-column refresh every 2048 us.
@@ -143,6 +205,7 @@ void Display::reset()
     }
     update_cnt = 0;
     repeat_cnt = 0;
+    repeat_advance_requested_ = false;
     str_pos = 0;
     str_chunk = 0;
     char_pos = -1;
@@ -186,6 +249,13 @@ void Display::clearIndicator()
 {
     indicator_active = false;
     indicator_frames = 0;
+}
+
+bool Display::consumeAnimationRepeatRequest()
+{
+    bool requested = repeat_advance_requested_;
+    repeat_advance_requested_ = false;
+    return requested;
 }
 
 void Display::snapshotState(DisplayState &state) const
@@ -379,10 +449,12 @@ void Display::update()
                 disp_buf[i] = ~(current_anim->data[chunk_offset + i]); // invert for active-low
             }
             str_pos += 8;
-            // Loop back when reaching end of animation
             if (str_pos >= current_anim->length)
             {
-                str_pos = 0;
+                if (finishAnimationCycle_())
+                {
+                    return;
+                }
             }
         }
         else if (current_anim->type == AnimationType::TEXT)
@@ -419,11 +491,11 @@ void Display::update()
                 // Advance to next/previous character in text
                 if (current_anim->direction == 0)
                 {
-                    str_pos = (str_pos + 1) % current_anim->length;
+                    str_pos++;
                 }
                 else
                 {
-                    str_pos = (str_pos == 0) ? (current_anim->length - 1) : (str_pos - 1);
+                    str_pos = (str_pos == 0) ? current_anim->length : (str_pos - 1);
                 }
             }
 
@@ -444,6 +516,14 @@ void Display::update()
                 else
                     disp_buf[0] = ~pgm_read_byte(&glyph_addr[glyph_len - char_pos + 1]);
             }
+
+            if (str_pos >= current_anim->length)
+            {
+                if (finishAnimationCycle_())
+                {
+                    return;
+                }
+            }
         }
     }
     else if (status == PAUSED)
@@ -461,7 +541,7 @@ void Display::update()
             }
             else
             {
-                str_pos = (current_anim->length - 1) % 128;
+                str_pos = current_anim->length - 1;
             }
             status = RUNNING;
             update_threshold = current_anim->speed;

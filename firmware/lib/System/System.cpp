@@ -101,12 +101,14 @@ static uint8_t shutdownFrameCount()
 static uint16_t shutdownFrameDelayMs()
 {
     const uint8_t p2 = pgm_read_byte(shutdownPattern + 2);
-    const uint8_t update_threshold = 250 - ((p2 & 0x0F) << 4);
-    // Match the upstream display cadence: one column every 256 us.
-    const uint32_t full_refresh_us = 8UL * 256UL;
-    const uint16_t delay_ms = (uint16_t)((((uint32_t)update_threshold * full_refresh_us) + 500UL) / 1000UL);
+    static const uint16_t PROGMEM frame_delay_ms_by_nibble[] = {
+        512, 479, 446, 414, 381, 348, 315, 283, 250, 217, 184, 152, 119, 86, 53, 20
+    };
 
-    return delay_ms == 0 ? 1 : delay_ms;
+    // The shutdown pattern exposes only 16 speed-nibble values, so a lookup
+    // table keeps the upstream timing without dragging 32-bit division helpers
+    // into the always-on release image.
+    return pgm_read_word(frame_delay_ms_by_nibble + (p2 & 0x0F));
 }
 
 /**
@@ -476,7 +478,12 @@ void System::loop()
                 storage.enable();
                 if (storage.hasData())
                 {
-                    current_pattern_index_ = (current_pattern_index_ + 1) % storage.numPatterns();
+                    const uint8_t pattern_count = storage.numPatterns();
+                    ++current_pattern_index_;
+                    if (current_pattern_index_ >= pattern_count)
+                    {
+                        current_pattern_index_ = 0;
+                    }
                     modemReceiver.showStoredPattern(current_pattern_index_);
                 }
                 else
@@ -589,6 +596,36 @@ void System::loop()
      * EEPROM chunk loads outside interrupt context.
      */
     display.update();
+#if defined(ENABLE_MODEM) && !defined(RX_NO_STORAGE)
+    if (display.consumeAnimationRepeatRequest())
+    {
+        handleAnimationRepeat();
+    }
+#endif
+}
+
+/**
+ * Advance to the next stored pattern after a finite repeat cycle completes.
+ */
+void System::handleAnimationRepeat()
+{
+#if defined(ENABLE_MODEM) && !defined(RX_NO_STORAGE)
+    storage.enable();
+    if (!storage.hasData())
+    {
+        current_pattern_index_ = 0;
+        showEmptyStorageMessage();
+        return;
+    }
+
+    const uint8_t pattern_count = storage.numPatterns();
+    ++current_pattern_index_;
+    if (current_pattern_index_ >= pattern_count)
+    {
+        current_pattern_index_ = 0;
+    }
+    modemReceiver.showStoredPattern(current_pattern_index_);
+#endif
 }
 
 void System::shutdown()

@@ -62,6 +62,7 @@ test('shutdown animation timing matches the upstream cadence independently of th
     const systemSource = fs.readFileSync(systemPath, 'utf8')
     const staticPatterns = fs.readFileSync(staticPatternsPath, 'utf8')
 
-    assert.match(systemSource, /const uint32_t full_refresh_us = 8UL \* 256UL;/)
+    assert.match(systemSource, /static const uint16_t PROGMEM frame_delay_ms_by_nibble\[] = \{\s*512, 479, 446, 414, 381, 348, 315, 283, 250, 217, 184, 152, 119, 86, 53, 20\s*\};/s)
+    assert.match(systemSource, /pgm_read_word\(frame_delay_ms_by_nibble \+ \(p2 & 0x0F\)\)/)
     assert.match(staticPatterns, /const uint8_t PROGMEM shutdownPattern\[\] = \{\s*0x20, 0x40,\s*0x0E, 0x0F,/s)
 })

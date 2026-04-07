@@ -35,6 +35,7 @@ npm run transfer:test
 - exercising the real receive path
 - testing framed transfer decode
 - testing storage writes and on-device playback
+- confirming that stalled transfers fall back to the on-device transmission-error path instead of leaving the parser half-open
 
 The tone script does not produce modem framing markers by itself, so it should not be expected to store content.
 
@@ -86,3 +87,5 @@ Use `debugwire` only if you are actively working on debugWIRE support and willin
 5. `npm run tone:test` to confirm the analog path
 6. `npm run transfer:test` to validate framed receive and storage
 7. switch to `jp1debug` only if runtime logging is needed
+
+If a transfer starts but then goes silent, the firmware now times out after roughly four seconds, clears the partial receive state, and shows the built-in transmission error message.

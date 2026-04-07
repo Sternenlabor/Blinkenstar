@@ -36,6 +36,11 @@ public:
      */
     void shutdown();
 
+    /**
+     * Advance to the next stored pattern after a finite repeat cycle completes.
+     */
+    void handleAnimationRepeat();
+
 private:
     uint16_t want_shutdown = 0; // Track long-press duration
     uint16_t both_pressed_stable = 0; // Stability gate for simultaneous press

@@ -93,6 +93,8 @@ public:
 #endif
 
 private:
+    static constexpr unsigned long FRAME_TIMEOUT_MS = 4000UL;
+
     enum TransmissionControl : uint8_t {
         BYTE_END = 0x84,
         // Legacy v2 markers
@@ -119,10 +121,23 @@ private:
         DATA,
     };
 
+    /**
+     * Refresh the interrupted-transfer timeout deadline.
+     *
+     * @param now_ms Current `millis()` value.
+     */
+    void armFrameTimeout_(unsigned long now_ms);
+
+    /**
+     * Abort an interrupted transfer and restore the upstream timeout message.
+     */
+    void handleTimeout_();
+
     RxExpect state_ = START1;
     uint8_t rx_buf_[32];
     uint8_t rx_pos_ = 0;
     uint16_t remaining_ = 0;
+    unsigned long frame_timeout_at_ms_ = 0;
     // Keep diagnostics intentionally small; the ATtiny88 only has 512 bytes of SRAM.
     bool frame_complete_ = false;
     bool frame_payload_complete_ = false;

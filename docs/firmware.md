@@ -82,13 +82,13 @@ The firmware is split into small modules in [`firmware/lib/`](../firmware/lib/):
 - `System`
   Owns startup, button policy, shutdown/wake, storage browsing, and factory-reset behavior.
 - `Display`
-  Owns LED matrix multiplexing, text scrolling, frame playback, and display state restore.
+  Owns LED matrix multiplexing, text scrolling, frame playback, end-of-animation pause/repeat handling, and display state restore.
 - `Modem`
   Owns ADC sampling and the raw demodulator.
 - `FECModem`
   Owns the FEC/Hamming-facing byte pipeline above the raw modem.
 - `Receiver`
-  Owns framed transfer parsing, storage writes, and receive-time user feedback.
+  Owns framed transfer parsing, storage writes, receive-time user feedback, and interrupted-transfer timeout recovery.
 - `Storage`
   Owns the EEPROM layout and pattern/page semantics.
 - `TwiBus`
@@ -108,8 +108,10 @@ In `release`:
 - stored content is reloaded at boot when available
 - the board shows the empty-storage boot message when EEPROM has no saved content
 - a valid transfer start shows the upstream-style flashing receive animation
+- if a started transfer stalls for about four seconds, the receiver drops the partial frame and shows the built-in transmission-error text
 - a completed transfer is written to external EEPROM, then shown on the matrix
 - left and right buttons browse stored patterns
+- finite-repeat stored animations now honor their encoded pause and repeat count before auto-advancing to the next stored pattern
 - holding both buttons shuts the board down
 - holding both buttons during power connection clears storage
 
