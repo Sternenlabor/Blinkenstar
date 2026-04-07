@@ -122,6 +122,23 @@ In `jp1debug`:
 - RX uses polling mode
 - debug output is sent through JP1 TX
 
+## Intentional Upstream Difference
+
+Upstream `blinkenrocket/firmware` puts the MCU into idle sleep between normal loop iterations so timer and modem interrupts wake it again immediately.
+
+Blinkenstar does not currently do that during normal runtime. The checked-in firmware only enters deep sleep for the explicit shutdown path, and otherwise stays in the Arduino `loop()` model.
+
+This is intentional for now:
+
+- the board already has a deliberate modem boot delay to give the display and analog front-end a quiet startup window
+- the current firmware goals have prioritized receive/display stability and predictable bring-up over active-idle power tuning
+
+If this is revisited later, the likely implementation target is a bench-validated idle-sleep path in normal runtime only, gated by:
+
+- confirming timer and modem wakeups still behave reliably on this board
+- checking that receive stability is not degraded by the sleep/wake cadence
+- measuring whether the power reduction is large enough to justify the added runtime complexity
+
 ## Current Caveat
 
 `debugwire` is present in the config, but it currently does not fit within the ATtiny88 flash budget in the checked-in tree.
