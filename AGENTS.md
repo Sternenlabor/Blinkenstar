@@ -6,7 +6,7 @@
 - Purpose: hardware, firmware, and bench-test utilities for the Blinkenstar board.
 - Hardware design sources live in `hardware/Blinkenstar/`, including the KiCad schematic, PCB, BOM exports, fabrication assets, and local footprint/symbol libraries.
 - Firmware source lives in `firmware/src/` and `firmware/lib/`.
-- Maintained firmware helper scripts live in `firmware/scripts/`.
+- Maintained firmware flash helpers live in `firmware/dist/`.
 - Distributable firmware artifacts copied out of PlatformIO builds live in `firmware/dist/`.
 - PlatformIO configuration lives in `firmware/platformio.ini`.
 - Node-based audio helpers and bench scripts live in `scripts/` and `scripts/lib/`.
@@ -21,7 +21,7 @@
 - Play the continuous sine-wave bench tone: `npm run tone:test`
 - Play the one-shot transfer payload bench test: `npm run transfer:test`
 - Build firmware from `firmware/` with the checked-in PlatformIO environments, for example `pio run -e release`.
-- Use `firmware/scripts/flash.sh` when you need a maintained build-copy-flash workflow with fuse programming.
+- Use `firmware/dist/flash.sh` on Unix-like hosts or `firmware/dist/flash.bat` on Windows when you need to flash an already-built `.hex` from `firmware/dist/` with fuse programming.
 - The supported firmware environments are `release`, `debugwire`, `jp1debug`, and `hwdiag`.
 - Prefer repo scripts and the checked-in PlatformIO environments over ad hoc commands when an equivalent workflow already exists.
 - If you touch `scripts/`, `test/`, or `package.json` scripts, run `npm test`.

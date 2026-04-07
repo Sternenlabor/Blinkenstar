@@ -32,22 +32,31 @@ cd firmware
 pio run -e release -t upload
 ```
 
-## Maintained Flash Script
+## Maintained Flash Helpers
 
-The maintained flashing helper lives at [`firmware/scripts/flash.sh`](../firmware/scripts/flash.sh).
+The maintained flashing helpers live at [`firmware/dist/flash.sh`](../firmware/dist/flash.sh) and [`firmware/dist/flash.bat`](../firmware/dist/flash.bat).
 
-It replaces the legacy `_old` helper and does three things in one step:
+They replace the legacy helper path and do two things:
 
-1. builds the selected PlatformIO environment
-2. copies locale-tagged artifacts into [`firmware/dist/`](../firmware/dist/)
-3. flashes the resulting `.hex` and writes the expected ATtiny88 fuse values
+1. select an existing locale-tagged `.hex` from [`firmware/dist/<env>/`](../firmware/dist/)
+2. flash it and write the expected ATtiny88 fuse values
+
+They do not build firmware or copy artifacts into `firmware/dist/`.
 
 Example:
 
 ```bash
 cd firmware
-./scripts/flash.sh release
-./scripts/flash.sh release de
+./dist/flash.sh release
+./dist/flash.sh release de
+```
+
+On Windows from `cmd.exe`:
+
+```bat
+cd firmware
+dist\flash.bat release
+dist\flash.bat release de
 ```
 
 Defaults:
@@ -58,12 +67,13 @@ Defaults:
 - programmer: `atmelice_isp`
 - port: `usb`
 
-You can override the programmer-related settings with environment variables such as `PROGRAMMER`, `PORT`, or `MCU`.
+You can override the programmer-related settings, or the `avrdude` binary path, with environment variables such as `AVRDUDE_BIN`, `PROGRAMMER`, `PORT`, or `MCU`.
 
-Artifact naming:
+Artifact selection:
 
-- default English builds are copied as `firmware_en.elf` and `firmware_en.hex`
-- German builds add `LANG_DE` and are copied as `firmware_de.elf` and `firmware_de.hex`
+- English artifacts should be present as `firmware_en.hex`
+- German artifacts should be present as `firmware_de.hex`
+- the helpers look under `firmware/dist/<env>/` and stop with an error if the expected file is missing
 
 ## Fuse Note
 
