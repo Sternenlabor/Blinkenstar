@@ -27,9 +27,9 @@ function getEnvSection(name) {
 }
 
 /**
- * Verify that the normal release build uses the upstream-compatible modem timing knobs.
+ * Verify that the normal release build matches the known-good consolidated release modem flags.
  */
-test('release uses the legacy modem timing instead of the retuned slow-ADC overrides', () => {
+test('release keeps the known-good consolidated modem flags without extra RX tuning overrides', () => {
     const release = getEnvSection('release')
 
     assert.ok(release, 'expected env:release to exist')

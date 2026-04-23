@@ -546,6 +546,7 @@ void ModemReceiver::process()
                 diaglog::captureFirstPage(rx_buf_);
                 diaglog::markSave();
                 storage.save(rx_buf_);
+                storage.sync();
                 display.setIndicator(0, 0, 2);
                 display.setIndicator(0, 7, 2);
 #endif
@@ -594,6 +595,7 @@ void ModemReceiver::process()
 #if !defined(RX_NO_STORAGE) && !defined(RX_BUFFERED_STORE)
                 diaglog::markAppend();
                 storage.append(rx_buf_);
+                storage.sync();
                 display.setIndicator(2, 0, 2);
                 display.setIndicator(2, 7, 2);
 #endif

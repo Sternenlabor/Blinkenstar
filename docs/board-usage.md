@@ -13,13 +13,14 @@ When a valid transfer starts:
 
 - the board switches to the flashing receive animation used by the original upstream firmware
 - transfer activity is still tracked internally through the receiver path
-- when the frame completes successfully, the new content is saved and then shown
+- when all payload bytes arrive, the new content is saved to EEPROM
+- when the trailing frame markers arrive, the saved content is reloaded and shown
 
 If a frame does not complete:
 
-- after about four seconds without more framed data, the receiver abandons the partial transfer
+- after about four seconds without more framed data, the receiver abandons the active transfer
 - the matrix shows the built-in transmission error message
-- the existing stored content remains authoritative until the next successful transfer or manual browse action
+- payloads that finished before the trailing markers were lost remain saved and restore on boot or browse
 
 ## Browsing Stored Content
 

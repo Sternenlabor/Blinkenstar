@@ -40,6 +40,22 @@ test('platformio.ini exposes only the consolidated build environments', () => {
 })
 
 /**
+ * Verify that the default release uploader mirrors the maintained flash helper fuse values.
+ */
+test('release upload programs the expected ATtiny88 fuses through avrdude', () => {
+    const release = getEnvSection('release')
+
+    assert.ok(release, 'expected env:release to exist')
+    assert.match(release, /upload_protocol = custom/)
+    assert.match(release, /upload_port = usb/)
+    assert.match(release, /upload_flags =[\s\S]*?-C[\s\S]*?tool-avrdude\/avrdude\.conf/)
+    assert.match(release, /upload_flags =[\s\S]*?-p[\s\S]*?\$BOARD_MCU/)
+    assert.match(release, /upload_flags =[\s\S]*?-P[\s\S]*?\$UPLOAD_PORT/)
+    assert.match(release, /upload_flags =[\s\S]*?-c[\s\S]*?atmelice_isp/)
+    assert.match(release, /upload_command = avrdude \$UPLOAD_FLAGS -U lfuse:w:0xee:m -U hfuse:w:0xdf:m -U efuse:w:0xff:m -U flash:w:\$SOURCE:i/)
+})
+
+/**
  * Verify that `jp1debug` inherits the release modem path while adding JP1-specific diagnostics.
  */
 test('jp1debug is the RX diagnostic build with JP1 serial logging', () => {

@@ -9,7 +9,7 @@ The checked-in public firmware environments are:
 - `debugwire`
   The same runtime with debugWIRE-oriented settings for bring-up.
 - `jp1debug`
-  RX diagnostic firmware with JP1 serial logging and reduced display/storage features to save SRAM.
+  RX diagnostic firmware with JP1 serial logging, reduced display/storage features to save SRAM, and extra modem threshold tuning for bench debugging.
 - `hwdiag`
   Button and display hardware diagnostic image.
 
@@ -31,6 +31,12 @@ Upload with an Atmel-ICE:
 cd firmware
 pio run -e release -t upload
 ```
+
+The checked-in `release` upload target mirrors the maintained flash helper fuse settings, so a successful upload also writes:
+
+- `lfuse = 0xee`
+- `hfuse = 0xdf`
+- `efuse = 0xff`
 
 ## Maintained Flash Helpers
 
@@ -115,11 +121,13 @@ The firmware is split into small modules in [`firmware/lib/`](../firmware/lib/):
 In `release`:
 
 - receive mode is always on
+- the modem keeps the known-good consolidated release receive flags from the old working `release` build
 - stored content is reloaded at boot when available
 - the board shows the empty-storage boot message when EEPROM has no saved content
 - a valid transfer start shows the upstream-style flashing receive animation
 - if a started transfer stalls for about four seconds, the receiver drops the partial frame and shows the built-in transmission-error text
-- a completed transfer is written to external EEPROM, then shown on the matrix
+- completed payload bytes are committed to external EEPROM before the trailing END markers are required
+- a completed transfer is reloaded from external EEPROM, then shown on the matrix
 - left and right buttons browse stored patterns
 - finite-repeat stored animations now honor their encoded pause and repeat count before auto-advancing to the next stored pattern
 - holding both buttons shuts the board down
