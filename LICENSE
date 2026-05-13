@@ -1,23 +1,33 @@
-MIT License
+# Blinkenstar Licensing
+
+This repository contains hardware design files, firmware, documentation, images, and host-side bench utilities. These parts are licensed separately.
+
+Unless a file or directory states otherwise:
+
+- Hardware design documentation in `hardware/Blinkenstar/` is licensed under the CERN Open Hardware Licence Version 1.2 (`CERN-OHL-1.2`).
+- Firmware source, firmware tests, and distributable firmware artifacts in `firmware/` are licensed under the GNU Lesser General Public License Version 3.0 (`LGPL-3.0-only`).
+- Documentation, instructions, and Blinkenstar images are licensed under the Creative Commons Attribution-ShareAlike 4.0 International license (`CC-BY-SA-4.0`).
+- Node-based bench utilities, audio helpers, and host-side tests in `scripts/` and `test/` are licensed under the MIT License.
+
+Third-party files keep their own license notices. Dependency licenses are not changed by this file.
+
+## Attribution
 
 Copyright (c) 2025 Sternenlabor e.V.
 
-Based on blinkenrocket.
+Blinkenstar is based on BlinkenRocket. The original BlinkenRocket license notice states that the board was released under CERN Open Hardware Licence Version 1.2, the firmware under LGPL Version 3.0, and the instructions and BlinkenRocket images under a Creative Commons Attribution-ShareAlike license.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+## License Texts
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+- CERN Open Hardware Licence Version 1.2: https://ohwr.org/cernohl
+- GNU Lesser General Public License Version 3.0: https://www.gnu.org/licenses/lgpl-3.0.html
+- Creative Commons Attribution-ShareAlike 4.0 International: https://creativecommons.org/licenses/by-sa/4.0/
+- MIT License: https://opensource.org/license/mit/
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+## MIT License For Host-Side Utilities
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of the Node-based bench utilities, audio helpers, and host-side tests in `scripts/` and `test/` (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of that Software, and to permit persons to whom that Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of that Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THAT SOFTWARE OR THE USE OR OTHER DEALINGS IN THAT SOFTWARE.

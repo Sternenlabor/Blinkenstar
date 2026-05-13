@@ -63,6 +63,17 @@ npm run transfer:test
 
 See [Bench And Debug](./docs/bench-and-debug.md) for JP1 wiring, diagnostic images, and recommended bring-up order.
 
+## License
+
+Blinkenstar uses separate licenses for separate repository parts:
+
+- Hardware design files in `hardware/Blinkenstar/`: CERN Open Hardware Licence Version 1.2 (`CERN-OHL-1.2`)
+- Firmware in `firmware/`: GNU Lesser General Public License Version 3.0 (`LGPL-3.0-only`)
+- Documentation, instructions, and Blinkenstar images: Creative Commons Attribution-ShareAlike 4.0 International (`CC-BY-SA-4.0`)
+- Node bench utilities and host-side tests in `scripts/` and `test/`: MIT License
+
+See [`LICENSE`](./LICENSE) for the full repository licensing overview and attribution notes.
+
 ## JP1 Wiring
 
 JP1 serial wiring for `jp1debug`:
