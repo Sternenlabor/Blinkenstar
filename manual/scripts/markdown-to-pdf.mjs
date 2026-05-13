@@ -491,6 +491,9 @@ function parseReadableMarkdownPage(pageNumber, pageReference, lines) {
   return page;
 }
 
+/**
+ * Reads readable Markdown text until the next layout marker while preserving paragraph breaks.
+ */
 function readReadableTextBlock(lines, startIndex) {
   const blockLines = [];
   let endIndex = startIndex;
@@ -499,11 +502,6 @@ function readReadableTextBlock(lines, startIndex) {
     const line = lines[index];
     const trimmed = line.trim();
 
-    if (!trimmed) {
-      endIndex = index;
-      break;
-    }
-
     if (index !== startIndex && (parseReferenceDefinition(trimmed) || parseReadableMarkdownImage(trimmed) || pageHeadingPattern.test(trimmed))) {
       endIndex = index - 1;
       break;
@@ -511,6 +509,10 @@ function readReadableTextBlock(lines, startIndex) {
 
     blockLines.push(stripReadableMarkdownText(trimmed));
     endIndex = index;
+  }
+
+  while (blockLines.at(-1) === '') {
+    blockLines.pop();
   }
 
   return {

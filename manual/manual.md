@@ -418,11 +418,11 @@ keine andere Musik läuft.
 
 ### ÜBER BLINKENSTAR
 
-[text-002]: <> "x=36.85 y=65.698 width=205 font=Calibri size=9 color=#33353b line-height=15"
+[text-002]: <> "x=36.85 y=65.698 width=232.625 font=Calibri size=8.8 color=#33353b line-height=12"
 
 Deinen Blinkenstar kannst du jederzeit mit neuen Inhalten bespielen. Gehe dazu einfach mit deinem Smartphone oder Computer auf https://blinkenstar.sternenlabor.de/ und befolge die Anweisungen auf der Webseite. Den Programmcode sowie andere Dateien der Blinkenstar findest du frei zugänglich unter https://github.com/Sternenlabor/Blinkenstar.
 
-Die erste Version des Blinkenstar Bausatz wurde in vielen Stunden von freiwilligen Helfern des Chaos Computer Club Düsseldorf e.V. und des shack e.V. mit viel Liebe zum Detail gebaut. Du kannst die beiden gemeinnützigen Vereine gerne mit einer kleinen Spende unterstützen! Die zweite Version der Blinkenstar wurde vom Metalab deutlich verbessert und kann beim Hackerspaceshop käuflich erworben werden. Mehr Details dazu finden sich unter http://hackerspaceshop.com.
+Die erste Version des Blinkenstar Bausatz wurde in vielen Stunden von freiwilligen Helfern des Chaos Computer Club Düsseldorf e.V. und des shack e.V. mit viel Liebe zum Detail gebaut. Du kannst die beiden gemeinnützigen Vereine gerne mit einer kleinen Spende unterstützen!
 
 Die Bilder der Lötanleitung sind aus den Comics "Soldering is easy" von mightyohm.com und "SMT soldering - it's easier than you think" von siliconfarmers.com entnommen und unter einer Creative Commons Attribution Share-Alike Lizenz lizensiert. Diese Anleitung und Blinkenstar Bilder sind ebenfalls unter dieser Lizenz lizensiert. Die Blinkenstar Platine ist unter der CERN Open-Hardware License Version 1.2 lizensiert, die Firmware steht unter der Lesser General Public License Version 3.0 (LGPL V. 3.0) zur Verfügung.
 

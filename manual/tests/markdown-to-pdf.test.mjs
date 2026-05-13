@@ -3,6 +3,7 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
+import fontkit from '@pdf-lib/fontkit';
 import { PDFDocument } from 'pdf-lib';
 
 import {
@@ -127,6 +128,110 @@ befinden.
     'Drehe die Platine auf die Seite, auf der sich noch keine Bauteile befinden.',
   );
 });
+
+test('parsePdfPages keeps separated paragraphs in one readable text block', testReadableTextBlockSpansParagraphs);
+
+/**
+ * Verifies that a readable text reference can include multiple Markdown paragraphs until the next layout marker.
+ */
+function testReadableTextBlockSpansParagraphs() {
+  const markdown = `
+[page-1]: <> "page=1 width=306 height=436 background=#ffffff"
+
+[text-001]: <> "x=53.858 y=95.091 width=205 font=Calibri size=9 color=#33353b"
+
+First paragraph.
+
+Second paragraph after a blank line.
+
+[text-002]: <> "x=53.858 y=220 width=205 font=Calibri size=9 color=#33353b"
+
+Following block.
+`;
+
+  const page = parsePdfPages(markdown)[0];
+
+  assert.equal(
+    page.elements.find((element) => element.id === 'text-001').text,
+    'First paragraph.\n\nSecond paragraph after a blank line.',
+  );
+  assert.equal(page.elements.find((element) => element.id === 'text-002').text, 'Following block.');
+}
+
+test('manual about pages use a wide body text block', testManualAboutPagesUseWideBodyTextBlock);
+
+/**
+ * Verifies that the about-page body text reaches the intended right-side guide.
+ */
+async function testManualAboutPagesUseWideBodyTextBlock() {
+  const font = await loadCarlitoRegularFont();
+
+  for (const file of ['manual.md', 'manual-ohne-smd.md']) {
+    const pages = parsePdfPages(await readFile(new URL(`../${file}`, import.meta.url), 'utf8'));
+    const body = pages.at(-1).elements.find((element) => element.id === 'text-002');
+
+    assert.equal(body.x, 36.85);
+    assert.equal(body.width, 232.625);
+    assert.equal(Number((body.x + body.width).toFixed(3)), 269.475);
+    assert.equal(body.size, 8.8);
+    assert.equal(body.lineHeight, 12);
+    assert.equal(renderedTextBottom(body, font) <= pages.at(-1).height - 20, true);
+  }
+}
+
+/**
+ * Loads the font used when Calibri text is rendered into the generated PDFs.
+ */
+async function loadCarlitoRegularFont() {
+  const pdf = await PDFDocument.create();
+  pdf.registerFontkit(fontkit);
+
+  return pdf.embedFont(await readFile(new URL('../node_modules/@fontsource/carlito/files/carlito-latin-400-normal.woff', import.meta.url)), {
+    subset: true,
+  });
+}
+
+/**
+ * Calculates the lower page-space y coordinate of rendered wrapped text.
+ */
+function renderedTextBottom(element, font) {
+  const lines = String(element.text)
+    .split(/\r?\n/)
+    .flatMap((line) => wrapTextLineForFont(line, font, element.size, element.width));
+
+  return element.y + element.size + (lines.length - 1) * element.lineHeight;
+}
+
+/**
+ * Wraps a single text line using the same greedy algorithm as the PDF generator.
+ */
+function wrapTextLineForFont(line, font, size, width) {
+  if (!line.trim()) {
+    return [''];
+  }
+
+  const words = line.trim().split(/\s+/);
+  const wrapped = [];
+  let current = '';
+
+  for (const word of words) {
+    const candidate = current ? `${current} ${word}` : word;
+
+    if (!current || font.widthOfTextAtSize(candidate, size) <= width) {
+      current = candidate;
+      continue;
+    }
+
+    wrapped.push(current);
+    current = word;
+  }
+
+  if (current) {
+    wrapped.push(current);
+  }
+
+  return wrapped;
+}
 
 test('parsePdfPages moves later flow text down when earlier body text grows', () => {
   const markdown = `
