@@ -11,7 +11,7 @@ public:
     /**
      * Start the raw modem and reset the FEC byte-pair state machine.
      */
-    void begin() { g_modem.begin(); state_ = FIRST_BYTE; }
+    void begin() { g_modem.begin(); g_modem.clear(); state_ = FIRST_BYTE; }
 
     /**
      * Stop the underlying raw modem.

@@ -25,14 +25,14 @@ test('system tracks the currently selected stored pattern and button browse stat
 })
 
 /**
- * Verify that single-button release steps through stored patterns like the upstream firmware.
+ * Verify that single-button release steps through stored patterns with the requested physical button direction.
  */
 test('system advances and rewinds stored patterns with wraparound on button release', () => {
     const systemSource = fs.readFileSync(systemSourcePath, 'utf8')
 
     assert.match(systemSource, /if \(button_mask_ == BUTTON_BROWSE_LOCKED\)\s*\{[\s\S]*?if \(!button1_is_low\(\) && !button2_is_low\(\) && \(long\)\(loop_now - button_debounce_until_ms_\) >= 0\)\s*\{\s*button_mask_ = BUTTON_NONE;\s*\}\s*\}/s)
-    assert.match(systemSource, /button_mask_ \|= BUTTON_NEXT;/)
-    assert.match(systemSource, /button_mask_ \|= BUTTON_PREVIOUS;/)
+    assert.match(systemSource, /if \(button1_is_low\(\)\)\s*\{\s*\/\/ PC3 rewinds through stored patterns\.\s*button_mask_ \|= BUTTON_PREVIOUS;\s*\}/s)
+    assert.match(systemSource, /if \(button2_is_low\(\)\)\s*\{\s*\/\/ PC7 advances through stored patterns\.\s*button_mask_ \|= BUTTON_NEXT;\s*\}/s)
     assert.doesNotMatch(systemSource, /raw_button_mask != button_raw_mask_/)
     assert.doesNotMatch(systemSource, /if \(!button1_is_low\(\) && !button2_is_low\(\)\)\s*\{\s*storage\.enable\(\);/s)
     assert.match(systemSource, /if \(button_mask_ == BUTTON_NEXT\)\s*\{\s*\/\*[\s\S]*?storage\.enable\(\);/s)

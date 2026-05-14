@@ -4,11 +4,12 @@ FECModem fecModem;
 
 uint8_t FECModem::available()
 {
+    if (state_ == SECOND_BYTE)
+        return 1;
+
     uint8_t raw = g_modem.available();
     if (raw >= 3)
         return 2;
-    if (state_ == SECOND_BYTE && raw >= 2)
-        return 1; // already buffered first byte, waiting for parity
     return 0;
 }
 
@@ -31,4 +32,3 @@ uint8_t FECModem::read()
     state_ = SECOND_BYTE;
     return t1;
 }
-

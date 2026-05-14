@@ -450,13 +450,13 @@ void System::loop()
     {
         if (button1_is_low())
         {
-            // Match the upstream browse semantics: the PC3 button advances.
-            button_mask_ |= BUTTON_NEXT;
+            // PC3 rewinds through stored patterns.
+            button_mask_ |= BUTTON_PREVIOUS;
         }
         if (button2_is_low())
         {
-            // Match the upstream browse semantics: the PC7 button rewinds.
-            button_mask_ |= BUTTON_PREVIOUS;
+            // PC7 advances through stored patterns.
+            button_mask_ |= BUTTON_NEXT;
         }
 
         /*
@@ -666,12 +666,23 @@ void System::shutdown()
     PCMSK1 |= _BV(3) | _BV(7);
     PCICR |= _BV(PCIE1);
 
-    // Enter deep sleep (power-down)
-    set_sleep_mode(SLEEP_MODE_PWR_DOWN);
-    sleep_enable();
-    interrupts();
-    sleep_cpu();
-    sleep_disable();
+    bool wake_requested = false;
+    while (!wake_requested)
+    {
+        // Any enabled pin change can wake the MCU, but only the stable two-button
+        // chord should leave shutdown and restore the display.
+        set_sleep_mode(SLEEP_MODE_PWR_DOWN);
+        sleep_enable();
+        interrupts();
+        sleep_cpu();
+        sleep_disable();
+
+        if (button1_is_low() && button2_is_low())
+        {
+            delay(25);
+            wake_requested = button1_is_low() && button2_is_low();
+        }
+    }
 
     // After wakeup, disable pin-change interrupts
     PCMSK1 &= ~( _BV(3) | _BV(7) );
@@ -696,6 +707,12 @@ void System::shutdown()
 
     // Re-enable ADC
     power_adc_enable();
+#ifdef ENABLE_MODEM
+    if (modem_enabled)
+    {
+        modemReceiver.begin();
+    }
+#endif
 
     debuglog::println("WAKE");
 }

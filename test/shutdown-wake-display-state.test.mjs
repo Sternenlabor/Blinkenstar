@@ -45,6 +45,44 @@ test('shutdown wake path preserves the active display state across the temporary
 })
 
 /**
+ * Verify that a single-button pin-change wake does not restore the display.
+ */
+test('shutdown wake path requires both buttons before restoring the display', () => {
+    const systemSource = fs.readFileSync(systemPath, 'utf8')
+    const shutdownSource = systemSource.slice(systemSource.indexOf('void System::shutdown()'), systemSource.indexOf('/**\n * Wake the MCU'))
+
+    const wakeLoopIndex = shutdownSource.indexOf('while (!wake_requested)')
+    const stableWakeIndex = shutdownSource.indexOf('wake_requested = button1_is_low() && button2_is_low();')
+    const enableIndex = shutdownSource.indexOf('display.enable();')
+    const restoreIndex = shutdownSource.indexOf('display.restoreState(preShutdownDisplayState);')
+
+    assert.notEqual(wakeLoopIndex, -1, 'expected wakeup to retry sleep until the two-button wake chord is detected')
+    assert.match(shutdownSource, /bool wake_requested = false;/)
+    assert.match(shutdownSource, /while \(!wake_requested\)\s*\{[\s\S]*sleep_cpu\(\);[\s\S]*if \(button1_is_low\(\) && button2_is_low\(\)\)\s*\{\s*delay\(25\);\s*wake_requested = button1_is_low\(\) && button2_is_low\(\);\s*\}/)
+    assert.ok(wakeLoopIndex < stableWakeIndex, 'expected the two-button wake check inside the sleep retry loop')
+    assert.ok(stableWakeIndex < enableIndex, 'expected display hardware to stay off until the wake chord is accepted')
+    assert.ok(enableIndex < restoreIndex, 'expected saved display state restore after display hardware is re-enabled')
+})
+
+/**
+ * Verify that soft wake restarts the always-on receiver after ADC power-down.
+ */
+test('shutdown wake path restarts the modem after ADC power is restored', () => {
+    const systemSource = fs.readFileSync(systemPath, 'utf8')
+    const shutdownSource = systemSource.slice(systemSource.indexOf('void System::shutdown()'), systemSource.indexOf('/**\n * Wake the MCU'))
+
+    const adcEnableIndex = shutdownSource.indexOf('power_adc_enable();')
+    const restartIndex = shutdownSource.indexOf('modemReceiver.begin();', adcEnableIndex)
+    const wakeLogIndex = shutdownSource.indexOf('debuglog::println("WAKE");')
+
+    assert.notEqual(adcEnableIndex, -1, 'expected shutdown wake path to restore ADC power')
+    assert.notEqual(restartIndex, -1, 'expected the modem to restart after ADC power is restored')
+    assert.match(shutdownSource, /power_adc_enable\(\);\s*#ifdef ENABLE_MODEM\s*if \(modem_enabled\)\s*\{\s*modemReceiver\.begin\(\);\s*\}\s*#endif\s*debuglog::println\("WAKE"\);/s)
+    assert.ok(adcEnableIndex < restartIndex, 'expected modem restart after ADC power is restored')
+    assert.ok(restartIndex < wakeLogIndex, 'expected wake logging after the modem is ready again')
+})
+
+/**
  * Verify that the shutdown animation is streamed directly from PROGMEM instead of reserving SRAM.
  */
 test('shutdown animation is streamed from PROGMEM instead of reserving a 64-byte SRAM buffer', () => {
