@@ -239,7 +239,7 @@
       "internal_id": "",
       "mfg": "",
       "mpn": "",
-      "sch_revision": ""
+      "sch_revision": "2.9"
     },
     "layer_pairs": [],
     "layer_presets": [],
@@ -657,7 +657,7 @@
       {
         "filename": "Blinkenstar.kicad_sch",
         "name": "Blinkenstar",
-        "uuid": "00000000-0000-0000-0000-000000000000"
+        "uuid": "aef0e59a-a546-4e07-b43f-b7b911a1cb8f"
       }
     ],
     "used_designators": "",
@@ -666,7 +666,7 @@
   "sheets": [
     [
       "aef0e59a-a546-4e07-b43f-b7b911a1cb8f",
-      "Root"
+      "Blinkenstar"
     ]
   ],
   "text_variables": {},
